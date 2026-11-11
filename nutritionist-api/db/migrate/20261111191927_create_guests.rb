@@ -1,0 +1,11 @@
+class CreateGuests < ActiveRecord::Migration[7.1]
+  def change
+    create_table :guests do |t|
+      t.string :name, null: false
+      t.citext :email, null: false
+
+      t.timestamps
+    end
+    add_index :guests, :email, unique: true
+  end
+end
