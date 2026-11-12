@@ -52,7 +52,7 @@ Desafio: pesquisa de nutricionistas e pedidos de marcação (Rails + PostgreSQL 
 ## 3. Use cases
 
 ### Guest
-- **Pesquisar** por nome do nutricionista ou por descrição do serviço. Devolve os nutricionistas com os seus serviços e preços, paginado e com `includes(:services)` para evitar N+1.
+- **Pesquisar** por nome do nutricionista ou por descrição do serviço. Devolve os nutricionistas com os seus serviços e preços, paginado e com `includes(:services)` para evitar N+1. (getbyfilter?nutricionistaName=.../service=....)
 - **Criar AppointmentRequest** (nome, email, serviço, data e hora):
   - A data tem de ser futura.
   - O serviço tem de pertencer ao nutricionista escolhido.
