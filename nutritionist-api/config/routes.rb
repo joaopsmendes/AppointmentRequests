@@ -4,5 +4,6 @@ Rails.application.routes.draw do
 
   namespace :api do
     resources :nutritionists, only: :index
+    resources :appointment_requests, only: :create
   end
 end

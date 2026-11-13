@@ -17,6 +17,6 @@ class NutritionistSerializer
       duration_minutes: service.duration_minutes,
       location: service.location
     }
-  end  
+  end
   private_class_method :render_service
 end

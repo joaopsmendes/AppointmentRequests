@@ -17,6 +17,16 @@ class AppointmentRequest < ApplicationRecord
     where("tstzrange(scheduled_at, ends_at) && tstzrange(?, ?)", from, to)
   }
 
+  # True when the nutritionist already has an accepted appointment overlapping this one.
+  # Read-only check for early feedback; the exclusion constraint is the real guarantee on accept.
+  def slot_taken?
+    AppointmentRequest.accepted
+                      .where(nutritionist_id: nutritionist_id)
+                      .overlapping(scheduled_at, ends_at)
+                      .where.not(id: id)
+                      .exists?
+  end
+
   private
 
   def calculate_ends_at
@@ -33,7 +43,7 @@ class AppointmentRequest < ApplicationRecord
 
   def only_one_pending_request_per_guest
     if guest_id && AppointmentRequest.where(guest_id: guest_id, status: :pending).exists?
-      errors.add(:guest, "already has a pending appointment request")
+      errors.add(:guest, :pending_request_exists, message: "already has a pending appointment request")
     end
   end
 
