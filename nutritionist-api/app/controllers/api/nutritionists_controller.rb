@@ -20,12 +20,7 @@ module Api
     def render_result(result)
       render json: {
         data: result.records.map { |nutritionist| NutritionistSerializer.render(nutritionist) },
-        meta: {
-          page: result.page,
-          per_page: result.per_page,
-          total_count: result.total_count,
-          total_pages: result.total_pages
-        }
+        meta: Common::PaginationSerializer.render(result)
       }
     end
   end

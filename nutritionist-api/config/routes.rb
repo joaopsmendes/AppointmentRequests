@@ -3,7 +3,9 @@ Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
   namespace :api do
-    resources :nutritionists, only: :index
+    resources :nutritionists, only: :index do
+      resources :appointment_requests, only: :index
+    end
     resources :appointment_requests, only: :create
   end
 end
