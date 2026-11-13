@@ -52,7 +52,7 @@ Desafio: pesquisa de nutricionistas e pedidos de marcação (Rails + PostgreSQL 
 ## 3. Use cases
 
 ### Guest
-- **Pesquisar** por nome do nutricionista ou por descrição do serviço. Devolve os nutricionistas com os seus serviços e preços, paginado e com `includes(:services)` para evitar N+1. (getbyfilter?nutricionistaName=.../service=....)
+- **Pesquisar** por nome do nutricionista ou por descrição do serviço. Devolve os nutricionistas com os seus serviços e preços, paginado e com `includes(:services)` para evitar N+1.
 - **Criar AppointmentRequest** (nome, email, serviço, data e hora):
   - A data tem de ser futura.
   - O serviço tem de pertencer ao nutricionista escolhido.
@@ -70,27 +70,42 @@ Desafio: pesquisa de nutricionistas e pedidos de marcação (Rails + PostgreSQL 
 |---|---|---|
 | GET | `/api/nutritionists?q=&page=` | Pesquisa por nome ou serviço |
 | POST | `/api/appointment_requests` | Criar pedido |
-| GET | `/api/nutritionists/:id/appointment_requests?status=pending` | Pedidos do nutricionista |
-| POST | `/api/appointment_requests/:id/accept` | Aceitar |
-| POST | `/api/appointment_requests/:id/reject` | Rejeitar |
+| GET | `/api/nutritionists/:id/appointment_requests?status=pending` | Pedidos do nutricionista, cada um com a contagem de pendentes sobrepostos |
+| PATCH | `/api/appointment_requests/:id` | Responder ao pedido com `{ "status": "accepted" }` ou `{ "status": "rejected" }`. Só permite a transição a partir de `pending`. Ao aceitar, devolve os ids rejeitados automaticamente |
 
 ## 4. Regras de negócio
 
 1. Um pedido pendente **não reserva** o slot. É um pedido a uma pessoa que decide. Vários guests podem pedir a mesma hora, e só um pedido **aceite** ocupa o slot.
 2. Um guest só pode ter **um pedido pendente** de cada vez, no total (por email).
-3. **Aceitar um pedido** (tudo numa só transação):
+3. **Aceitar um pedido** (`PATCH` com `status: accepted`, tudo numa só transação):
    1. Marca-o como `accepted` com UPDATE condicional (`WHERE status = 'pending'`). Se já tinha sido respondido, devolve 409.
    2. Se o intervalo `[scheduled_at, ends_at)` se sobrepõe a uma consulta já aceite do mesmo nutricionista (incluindo a mesma hora), a base de dados recusa. O backend devolve 409 com a mensagem "Não é possível aceitar: sobrepõe-se a uma consulta já aceite", e o frontend mostra-a.
    3. Se correu bem, rejeita automaticamente os pedidos pendentes que ficaram sem horário:
       - do mesmo guest, para a mesma data e hora (regra do enunciado; com a regra 2 dificilmente dispara);
       - de **outros guests** do mesmo nutricionista cujo intervalo se sobrepõe ao que acabou de ser aceite.
-   4. Depois do commit, envia o email a todos os guests respondidos: o aceite e os rejeitados automaticamente (`deliver_later`).
-4. **Se a aceitação falhar** (sobreposição ou já respondido), é feito rollback: o pedido continua pendente, nada é rejeitado e nenhum email é enviado. O nutricionista pode rejeitá-lo manualmente.
-5. **Rejeitar:** UPDATE condicional (`WHERE status = 'pending'`) e email ao guest depois do commit.
+   4. Depois do commit, notifica por email cada guest respondido (o aceite e os rejeitados automaticamente) através do `NotificationService` (secção 5).
+4. **Se a aceitação falhar** (sobreposição ou já respondido), é feito rollback: o pedido continua pendente, nada é rejeitado e nenhum email é enviado, porque a notificação só acontece depois do commit. O nutricionista pode rejeitá-lo manualmente.
+5. **Rejeitar** (`PATCH` com `status: rejected`): UPDATE condicional (`WHERE status = 'pending'`) e, depois do commit, notifica o guest.
 6. Ao aceitar, os pedidos pendentes de **outros** guests que ficam sobrepostos são rejeitados automaticamente (decisão minha, além do enunciado, que só pede isso para o mesmo guest). Deixá-los pendentes para um horário que já não existe não faz sentido, e obrigava o nutricionista a descobrir o conflito só ao tentar aceitar.
 7. Consultas encostadas (09:00–09:45 e 09:45–10:30) **não** são sobreposição, porque o intervalo é aberto no fim (`[)`).
+8. **Aviso na UI antes de aceitar:** se o pedido tem outros pendentes sobrepostos, o frontend pede confirmação ("Ao aceitar, vão ser rejeitados automaticamente N pedidos: nome, hora…"). A lista já traz essa contagem, calculada numa só query (sem N+1). O aviso é informativo e pode estar desatualizado, por isso o backend é a autoridade e a resposta do `accept` devolve os ids rejeitados para a UI se atualizar.
 
-## 5. Concorrência
+## 5. Notificações
+
+O enunciado pede um email ao guest quando o pedido é respondido. Versão simples, atrás de um serviço próprio:
+
+1. Aceitar ou rejeitar corre numa transação (secção 4).
+2. **Depois do commit**, para cada guest respondido, chama-se `NotificationService.notify(request)`, que faz `GuestMailer.answered(request).deliver_later` (ActiveJob).
+3. O envio nunca acontece dentro da transação: um email enviado não se desfaz com um rollback, e uma chamada a um serviço externo deixava a transação aberta, com os locks presos.
+4. Com rollback não há notificação, porque o serviço só é chamado depois do commit.
+
+**Porquê um `NotificationService`:** isola a forma de enviar. Trocar o `deliver_later` por uma outbox (secção 7) passa a ser uma alteração num só sítio.
+
+**Limites conhecidos**
+- Se o processo morrer entre o commit e o envio para a fila, o email perde-se (dual write).
+- O adaptador por omissão (`:async`) não persiste os jobs nem repete falhas. É aceitável neste desafio, porque o email é informativo.
+
+## 6. Concorrência
 
 | Momento | Regra | Garantia |
 |---|---|---|
@@ -102,22 +117,10 @@ Desafio: pesquisa de nutricionistas e pedidos de marcação (Rails + PostgreSQL 
 
 Dois guests a pedirem a mesma hora em simultâneo não geram conflito, porque não há recurso exclusivo a proteger: ficam os dois pendentes e o nutricionista decide. O único recurso exclusivo é a consulta aceite, e é aí que está a garantia na base de dados.
 
-## 6. Dúvidas levantadas e decisões
-
-| Dúvida | Decisão | Porquê |
-|---|---|---|
-| Os slots pendentes aparecem como ocupados para outros guests? | Não. Só os aceites ocupam o slot | Pendente é um pedido a uma pessoa que decide. Bloquear exigia expiração (mais scope) |
-| Em concorrência, deixo o sistema aceitar e o nutricionista decide, ou indico logo ao guest que o slot não está disponível? | Pendentes: aceita-se e o nutricionista decide. Se já existe um aceite: aviso ao criar (feedback) e garantia ao aceitar (constraint) | A garantia só é precisa na escrita exclusiva (aceitar) |
-| Preciso da tabela Guest? | Sim | O guest é identificado pelo email e a regra do pendente fica limpa |
-| POST ou PUT/PATCH para aceitar e rejeitar? | `POST .../accept` e `POST .../reject` | A intenção fica explícita e controlo as transições |
-| O POST de criar tem de ser idempotente? | Não precisa de Idempotency-Key | O índice único já impede duplicados; o botão desativa-se durante o pedido |
-| "Um pendente por horário" ou "um pendente por email"? | Um por email, no total | Regra do enunciado; a rejeição automática fica como salvaguarda |
-| Guardo a duração? | Sim, com `ends_at` no pedido | A exclusion constraint precisa do intervalo; se o serviço mudar, as marcações antigas não mudam. Se o tempo apertar, simplifico para um slot |
-| Ao aceitar, rejeito os pedidos pendentes de outros guests para esse slot? | Sim, os que se sobrepõem, na mesma transação, com email a cada um | Evita pedidos pendentes para um horário que já não existe e conflitos só descobertos ao aceitar. A constraint continua a ser a garantia em caso de corrida |
-
-## 7. O que cortei (para o README)
+## 7. Trabalho Futuro
 
 - **Idempotency-Key no POST:** o índice único já impede pedidos duplicados.
 - **Motor de pesquisa externo:** `pg_trgm` com `unaccent` chega a esta escala.
 - **Autenticação e calendário de disponibilidade:** fora do enunciado.
 - **Outbox para os emails:** `deliver_later` chega aqui. Em produção, tabela outbox mais um worker com retries, porque um email não é atómico com o commit.
+- **Auditoria das decisões:** passar o aceitar/rejeitar a `POST /api/appointment_requests/:id/decisions`, que cria um registo imutável por decisão (pedido, estado anterior e novo, data e, havendo autenticação, quem decidiu). O PATCH atualiza o estado no sítio e perde o histórico. O que dá auditoria é o registo, não o verbo POST.
