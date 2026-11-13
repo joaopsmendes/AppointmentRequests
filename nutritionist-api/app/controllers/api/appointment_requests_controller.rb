@@ -2,6 +2,18 @@ module Api
   class AppointmentRequestsController < ApplicationController
     ERROR_STATUSES = { invalid: :unprocessable_entity, conflict: :conflict, not_found: :not_found }.freeze
 
+    # GET /api/nutritionists/:nutritionist_id/appointment_requests?status=&page=&per_page=
+    def index
+      result = AppointmentRequests::ListAppointmentRequests.call(
+        nutritionist_id: params[:nutritionist_id],
+        status: params[:status],
+        page: params[:page],
+        per_page: params[:per_page]
+      )
+
+      render_list_result(result)
+    end
+
     # POST /api/appointment_requests
     def create
       result = AppointmentRequests::Create.call(
@@ -15,11 +27,22 @@ module Api
     end
 
     private
-
+    
+    def render_list_result(result)
+      if result.success?
+        render json: {
+          data: result.records.map { |appointment_request| AppointmentRequestSerializer.render(appointment_request) },
+          meta: Common::PaginationSerializer.render(result)
+        }
+      else
+        render json: { errors: result.errors }, status: ERROR_STATUSES.fetch(result.status)
+      end
+    end
+  
     def create_params
       params.require(:appointment_request).permit(:name, :email, :service_id, :scheduled_at)
     end
-
+    
     def render_result(result)
       if result.success?
         render json: AppointmentRequestSerializer.render(result.appointment_request), status: :created
