@@ -1,1 +1,3 @@
-# Filled in when testing AppointmentRequests::Create and Answer.
+maria:
+  name: Maria Santos
+  email: maria@example.com
