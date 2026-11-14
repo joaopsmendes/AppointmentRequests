@@ -1,0 +1,11 @@
+Hello <%= @guest.name %>,
+
+<% if @appointment_request.accepted? -%>
+Your appointment request was accepted.
+<% else -%>
+Unfortunately, your appointment request was rejected. You can request another date and time.
+<% end -%>
+
+Nutritionist: <%= @nutritionist.name %>
+Service: <%= @service.description %> (<%= @service.location %>)
+Date: <%= @appointment_request.scheduled_at.strftime("%d/%m/%Y %H:%M") %>

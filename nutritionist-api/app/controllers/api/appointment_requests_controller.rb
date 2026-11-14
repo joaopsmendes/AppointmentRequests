@@ -26,6 +26,16 @@ module Api
       render_result(result)
     end
 
+    # PATCH /api/appointment_requests/:id  { "status": "accepted" | "rejected" }
+    def update
+      result = AppointmentRequests::Answer.call(
+        id: params[:id],
+        status: params.require(:status)
+      )
+
+      render_answer_result(result)
+    end
+
     private
     
     def render_list_result(result)
@@ -46,6 +56,17 @@ module Api
     def render_result(result)
       if result.success?
         render json: AppointmentRequestSerializer.render(result.appointment_request), status: :created
+      else
+        render json: { errors: result.errors }, status: ERROR_STATUSES.fetch(result.status)
+      end
+    end
+    
+    def render_answer_result(result)
+      if result.success?
+        render json: {
+          appointment_request: AppointmentRequestSerializer.render(result.appointment_request),
+          auto_rejected_ids: result.auto_rejected_ids
+        }
       else
         render json: { errors: result.errors }, status: ERROR_STATUSES.fetch(result.status)
       end
