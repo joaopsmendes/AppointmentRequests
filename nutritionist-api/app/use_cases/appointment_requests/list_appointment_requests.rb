@@ -10,6 +10,8 @@ module AppointmentRequests
       nutritionist = Nutritionist.find_by(id: nutritionist_id)
       return failure(:not_found, ["Nutritionist not found"]) unless nutritionist
 
+      per_page = nil unless per_page.to_i.positive?
+
       status = status.presence || "pending"
       unless AppointmentRequest.statuses.key?(status)
         return failure(:invalid, ["Status must be one of: #{AppointmentRequest.statuses.keys.join(', ')}"])

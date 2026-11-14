@@ -1,1 +1,41 @@
-# Filled in when testing AppointmentRequests::Create, List and Answer.
+ana_pending_sooner:
+  nutritionist: ana
+  service: ana_online_follow_up
+  guest: ines
+  scheduled_at: <%= 20.days.from_now.change(hour: 9) %>
+  ends_at: <%= 20.days.from_now.change(hour: 9, min: 30) %>
+  status: pending
+
+ana_pending_later:
+  nutritionist: ana
+  service: ana_first_appointment
+  guest: pedro
+  scheduled_at: <%= 21.days.from_now.change(hour: 10) %>
+  ends_at: <%= 21.days.from_now.change(hour: 11) %>
+  status: pending
+
+ana_accepted:
+  nutritionist: ana
+  service: ana_first_appointment
+  guest: rui
+  scheduled_at: <%= 22.days.from_now.change(hour: 10) %>
+  ends_at: <%= 22.days.from_now.change(hour: 11) %>
+  status: accepted
+  answered_at: <%= 1.day.ago %>
+
+ana_rejected:
+  nutritionist: ana
+  service: ana_first_appointment
+  guest: joana
+  scheduled_at: <%= 23.days.from_now.change(hour: 10) %>
+  ends_at: <%= 23.days.from_now.change(hour: 11) %>
+  status: rejected
+  answered_at: <%= 1.day.ago %>
+
+joao_pending:
+  nutritionist: joao
+  service: joao_sports_nutrition
+  guest: rui
+  scheduled_at: <%= 20.days.from_now.change(hour: 9) %>
+  ends_at: <%= 20.days.from_now.change(hour: 9, min: 45) %>
+  status: pending

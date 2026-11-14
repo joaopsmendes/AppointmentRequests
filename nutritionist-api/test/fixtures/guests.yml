@@ -1,3 +1,19 @@
 maria:
   name: Maria Santos
   email: maria@example.com
+
+pedro:
+  name: Pedro Alves
+  email: pedro@example.com
+
+ines:
+  name: Inês Rocha
+  email: ines@example.com
+
+rui:
+  name: Rui Matos
+  email: rui@example.com
+
+joana:
+  name: Joana Reis
+  email: joana@example.com
