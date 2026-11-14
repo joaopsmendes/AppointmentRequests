@@ -27,6 +27,21 @@ class AppointmentRequest < ApplicationRecord
                       .exists?
   end
 
+  # Answers the request (accepted or rejected) with a conditional UPDATE: only a pending
+  # request can be answered, so a double click or two open tabs cannot answer it twice.
+  # Returns true when this call answered the request, false when it was already answered.
+  # Accepting may raise the no_overlapping_accepted exclusion violation.
+  # The UPDATE locks the row until the transaction ends, so the same request
+  # cannot be answered twice at the same time.
+  def answer!(new_status)
+    now = Time.current
+    answered = AppointmentRequest.pending
+                                 .where(id: id)
+                                 .update_all(status: new_status.to_s, answered_at: now, updated_at: now)
+    reload if answered == 1
+    answered == 1
+  end
+
   private
 
   def calculate_ends_at

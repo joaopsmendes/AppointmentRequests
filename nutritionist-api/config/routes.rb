@@ -6,6 +6,6 @@ Rails.application.routes.draw do
     resources :nutritionists, only: :index do
       resources :appointment_requests, only: :index
     end
-    resources :appointment_requests, only: :create
+    resources :appointment_requests, only: [:create, :update]
   end
 end
