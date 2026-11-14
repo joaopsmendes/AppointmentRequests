@@ -4,6 +4,7 @@ module Nutritionists
     Result = Struct.new(:records, :page, :per_page, :total_count, :total_pages, keyword_init: true)
 
     def self.call(query: nil, page: 1, per_page: nil)
+      per_page = nil unless per_page.to_i.positive?
       scope = build_scope(query)
       paginated_scope = scope.page(page).per(per_page, max_per_page: 25)
 
