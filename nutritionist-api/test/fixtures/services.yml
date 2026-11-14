@@ -1,15 +1,27 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+ana_first_appointment:
+  nutritionist: ana
+  description: First appointment
+  price_cents: 4000
+  duration_minutes: 60
+  location: Lisboa
 
-one:
-  nutritionist: one
-  description: MyString
-  price_cents: 1
-  duration_minutes: 1
-  location: MyString
+ana_online_follow_up:
+  nutritionist: ana
+  description: Online follow-up
+  price_cents: 2500
+  duration_minutes: 30
+  location: Online
 
-two:
-  nutritionist: two
-  description: MyString
-  price_cents: 1
-  duration_minutes: 1
-  location: MyString
+joao_sports_nutrition:
+  nutritionist: joao
+  description: Sports nutrition
+  price_cents: 5000
+  duration_minutes: 45
+  location: Porto
+
+rita_follow_up:
+  nutritionist: rita
+  description: Follow-up appointment
+  price_cents: 3000
+  duration_minutes: 45
+  location: Leiria

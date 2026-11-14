@@ -1,11 +1,13 @@
-# Read about fixtures at https://api.rubyonrails.org/classes/ActiveRecord/FixtureSet.html
+ana:
+  name: Ana Lima
+  license_number: 1001N
+  photo_url: https://example.com/ana.png
 
-one:
-  name: MyString
-  license_number: MyString
-  photo_url: MyString
+joao:
+  name: João Silva
+  license_number: 1002N
+  photo_url: https://example.com/joao.png
 
-two:
-  name: MyString
-  license_number: MyString
-  photo_url: MyString
+rita:
+  name: Rita Costa
+  license_number: 1003N
