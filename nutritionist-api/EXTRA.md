@@ -1,1 +1,0 @@
-install rubocop é o linter e formatador padrão do ecossistema Ruby
