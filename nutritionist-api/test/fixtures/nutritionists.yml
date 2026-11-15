@@ -1,13 +1,16 @@
 ana:
   name: Ana Lima
+  name_search: ana lima
   license_number: 1001N
   photo_url: https://example.com/ana.png
 
 joao:
   name: João Silva
+  name_search: joao silva
   license_number: 1002N
   photo_url: https://example.com/joao.png
 
 rita:
   name: Rita Costa
+  name_search: rita costa
   license_number: 1003N

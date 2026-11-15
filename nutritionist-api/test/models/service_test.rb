@@ -21,6 +21,14 @@ class ServiceTest < ActiveSupport::TestCase
     end
   end
 
+  test "keeps a searchable copy of the description, without accents and in lowercase" do
+    service = services(:ana_first_appointment)
+
+    service.update!(description: "Nutrição Desportiva")
+
+    assert_equal "nutricao desportiva", service.reload.description_search
+  end
+
   test "cannot be deleted while it has appointment requests" do
     service = services(:ana_first_appointment)
 
