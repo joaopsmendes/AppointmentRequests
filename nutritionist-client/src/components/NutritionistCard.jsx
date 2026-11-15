@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { formatPrice } from '../utils/formatPrice'
+import Avatar from './Avatar'
 import { BriefcaseIcon, MapPinIcon, MoneyIcon } from './icons'
 
 function NutritionistCard({ nutritionist, onSchedule }) {
@@ -69,24 +70,6 @@ function NutritionistCard({ nutritionist, onSchedule }) {
         <p className="mt-4 text-sm text-slate-500 sm:ml-20">No services available.</p>
       )}
     </article>
-  )
-}
-
-function Avatar({ name, photoUrl }) {
-  if (photoUrl) {
-    return <img src={photoUrl} alt="" className="h-16 w-16 shrink-0 rounded-full bg-brand-50" />
-  }
-
-  const initials = name
-    .split(' ')
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join('')
-
-  return (
-    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-brand-50 font-medium text-brand-600">
-      {initials}
-    </div>
   )
 }
 
