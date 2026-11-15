@@ -27,12 +27,9 @@ class AppointmentRequest < ApplicationRecord
                       .exists?
   end
 
-  # Answers the request (accepted or rejected) with a conditional UPDATE: only a pending
-  # request can be answered, so a double click or two open tabs cannot answer it twice.
-  # Returns true when this call answered the request, false when it was already answered.
-  # Accepting may raise the no_overlapping_accepted exclusion violation.
-  # The UPDATE locks the row until the transaction ends, so the same request
-  # cannot be answered twice at the same time.
+  # Atomically answers a pending request via conditional UPDATE, locking the row for the
+  # transaction so concurrent requests cannot answer it twice.
+  # Returns true if answered, false if already handled. May raise PG::ExclusionViolation on accept.
   def answer!(new_status)
     now = Time.current
     answered = AppointmentRequest.pending
