@@ -17,9 +17,11 @@ module AppointmentRequests
         return failure(:invalid, ["Status must be one of: #{AppointmentRequest.statuses.keys.join(', ')}"])
       end
 
-      paginated_scope = nutritionist.appointment_requests
-                                    .where(status: status)
-                                    .includes(:guest, :service)
+      scope = nutritionist.appointment_requests.where(status: status)
+      # A pending request whose date has passed can no longer be accepted, so it is not shown.
+      scope = scope.upcoming if status == "pending"
+
+      paginated_scope = scope.includes(:guest, :service)
                                     .order(:scheduled_at, :id)
                                     .page(page)
                                     .per(per_page, max_per_page: 25)

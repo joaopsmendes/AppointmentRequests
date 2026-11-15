@@ -16,6 +16,12 @@ class AppointmentRequest < ApplicationRecord
   scope :overlapping, ->(from, to) {
     where("tstzrange(scheduled_at, ends_at) && tstzrange(?, ?)", from, to)
   }
+  scope :upcoming, -> { where("scheduled_at > ?", Time.current) }
+  scope :past, -> { where("scheduled_at <= ?", Time.current) }
+
+  def past?
+    scheduled_at <= Time.current
+  end
 
   # True when the nutritionist already has an accepted appointment overlapping this one.
   # Read-only check for early feedback; the exclusion constraint is the real guarantee on accept.

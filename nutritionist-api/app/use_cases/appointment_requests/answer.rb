@@ -10,6 +10,7 @@ module AppointmentRequests
     MAX_ATTEMPTS = 3
     ALREADY_ANSWERED_MESSAGE = "This appointment request has already been answered".freeze
     OVERLAP_MESSAGE = "Cannot accept: it overlaps an already accepted appointment".freeze
+    PAST_MESSAGE = "Cannot accept: the appointment date has already passed".freeze
 
     def self.call(id:, status:)
       unless ANSWERS.include?(status)
@@ -18,6 +19,11 @@ module AppointmentRequests
 
       appointment_request = AppointmentRequest.find_by(id: id)
       return failure(:not_found, ["Appointment request not found"]) unless appointment_request
+
+      # Rejecting a past request is harmless; accepting it would book an appointment in the past.
+      if status == "accepted" && appointment_request.past?
+        return failure(:invalid, [PAST_MESSAGE])
+      end
 
       attempts = 0
       begin
