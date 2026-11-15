@@ -1,8 +1,9 @@
 import { request } from './client'
 
-// GET /api/nutritionists/:id/appointment_requests?status=&page=
-export function listAppointmentRequests(nutritionistId, { status = 'pending', page = 1 } = {}) {
+// GET /api/nutritionists/:id/appointment_requests?status=&page=&per_page=
+export function listAppointmentRequests(nutritionistId, { status = 'pending', page = 1, perPage } = {}) {
   const params = new URLSearchParams({ status, page })
+  if (perPage) params.set('per_page', perPage)
   return request(`/api/nutritionists/${nutritionistId}/appointment_requests?${params}`)
 }
 
