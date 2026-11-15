@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { listAppointmentRequests } from '../api/appointmentRequests'
 import AnswerRequestModal from '../components/AnswerRequestModal'
 import AppointmentRequestCard from '../components/AppointmentRequestCard'
@@ -80,6 +80,10 @@ function PendingRequestsPage() {
 
   return (
     <section className="mx-auto max-w-5xl px-4 py-8">
+      <Link to="/professionals" className="mb-4 inline-block text-sm text-brand-600 hover:underline">
+        ← Choose another profile
+      </Link>
+
       <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="text-xl text-slate-800">
