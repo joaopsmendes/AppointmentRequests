@@ -17,16 +17,29 @@ module Nutritionists
       )
     end
 
-    # The search looks at the normalized copies (name_search, description_search: no accents, lowercase)
+    # Searches accent-free, lowercase columns (name_search, description_search) using SearchText.
+    # Combines exact substring matching (ILIKE) with pg_trgm typo tolerance (<%, threshold 0.6),
+    # both backed by the same trigram indexes.
+    NAME_MATCHES = "nutritionists.name_search ILIKE :term OR :query <% nutritionists.name_search".freeze
+    DESCRIPTION_MATCHES = "description_search ILIKE :term OR :query <% description_search".freeze
+    EXACT_MATCHES_FIRST = <<~SQL.squish.freeze
+      CASE WHEN nutritionists.name_search ILIKE :term
+             OR nutritionists.id IN (SELECT nutritionist_id FROM services WHERE description_search ILIKE :term)
+           THEN 0 ELSE 1 END
+    SQL
+
     def self.build_scope(query)
-      scope = Nutritionist.preload(:services).order(:name, :id)
-      return scope if query.blank?
+      scope = Nutritionist.preload(:services)
+      return scope.order(:name, :id) if query.blank?
 
-      term = "%#{Nutritionist.sanitize_sql_like(SearchText.normalize(query))}%"
-      matching_services = Service.where("description_search ILIKE ?", term).select(:nutritionist_id)
+      query = SearchText.normalize(query)
+      values = { term: "%#{Nutritionist.sanitize_sql_like(query)}%", query: query }
 
-      scope.where("nutritionists.name_search ILIKE ?", term)
+      matching_services = Service.where(DESCRIPTION_MATCHES, values).select(:nutritionist_id)
+
+      scope.where(NAME_MATCHES, values)
            .or(scope.where(id: matching_services))
+           .order(Arel.sql(Nutritionist.sanitize_sql_array([EXACT_MATCHES_FIRST, values])), :name, :id)
     end
 
     private_class_method :build_scope
