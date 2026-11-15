@@ -66,6 +66,27 @@ module Nutritionists
       assert_equal ["Rita Costa"], names(Search.call(query: "nutricao clinica"))
     end
 
+    # --- Typo tolerance (pg_trgm word similarity) ------------------------------------
+
+    test "finds nutritionists by name despite a typo" do
+      assert_equal ["Ana Lima"], names(Search.call(query: "ana lma"))
+    end
+
+    test "finds nutritionists by service description despite a typo" do
+      assert_equal ["João Silva"], names(Search.call(query: "nutriton")) # Sports nutrition
+    end
+
+    test "tolerates a typo and missing accents together" do
+      assert_equal ["João Silva"], names(Search.call(query: "joao slva"))
+    end
+
+    test "lists exact matches before close matches" do
+      Nutritionist.create!(name: "Anita Costa", license_number: "9001N")
+
+      # Alphabetically Anita comes first, but only Rita contains the query
+      assert_equal ["Rita Costa", "Anita Costa"], names(Search.call(query: "rita costa"))
+    end
+
     test "returns an empty result when nothing matches" do
       result = Search.call(query: "cardiology")
 
