@@ -2,6 +2,8 @@ require "test_helper"
 
 module AppointmentRequests
   class CreateTest < ActiveSupport::TestCase
+    include ActionMailer::TestHelper
+
     setup do
       # 10:00-11:00 with Ana's 60-minute first appointment
       @slot = 3.days.from_now.change(hour: 10)
@@ -71,6 +73,29 @@ module AppointmentRequests
         assert_created(result, guest_email: "maria@example.com", scheduled_at: @slot + 1.day)
         assert_equal [previous_status, "pending"], guests(:maria).appointment_requests.order(:scheduled_at).pluck(:status)
       end
+    end
+
+    # --- Past pending requests -------------------------------------------------
+
+    test "rejects the guest's past pending request, without an email, so a new one can be made" do
+      expired = past_pending_request(email: "maria@example.com")
+      result = nil
+
+      assert_no_enqueued_emails do
+        result = create(email: "maria@example.com", scheduled_at: @slot + 1.day)
+      end
+
+      assert_created(result, guest_email: "maria@example.com", scheduled_at: @slot + 1.day)
+      expired.reload
+      assert_equal "rejected", expired.status
+      assert_in_delta Time.current, expired.answered_at, 5.seconds
+    end
+
+    test "does not touch the past pending requests of other guests" do
+      other_guest_request = past_pending_request(email: "other@example.com")
+
+      assert_created(create(email: "maria@example.com"), guest_email: "maria@example.com")
+      assert other_guest_request.reload.pending?
     end
 
     # --- Accepted slots --------------------------------------------------------
@@ -181,6 +206,14 @@ module AppointmentRequests
 
     def create(name: "Test Guest", email: "guest@example.com", service: @service, scheduled_at: @slot)
       Create.call(name: name, email: email, service_id: service.id, scheduled_at: scheduled_at)
+    end
+
+    # A pending request whose date has already passed (moved to the past after being created,
+    # since the model does not allow creating it in the past).
+    def past_pending_request(email:)
+      request = create(email: email).appointment_request
+      request.update_columns(scheduled_at: 1.day.ago, ends_at: 1.day.ago + 60.minutes)
+      request
     end
 
     def accept(result)

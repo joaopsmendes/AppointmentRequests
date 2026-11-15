@@ -150,6 +150,21 @@ module AppointmentRequests
       assert @request.reload.pending?
     end
 
+    test "refuses to accept a request whose date has already passed" do
+      @request.update_columns(scheduled_at: 1.hour.ago, ends_at: 1.hour.ago + 60.minutes)
+
+      result = answer(@request, "accepted")
+
+      assert_failure(result, :invalid, [Answer::PAST_MESSAGE])
+      assert @request.reload.pending?
+    end
+
+    test "still allows rejecting a request whose date has already passed" do
+      @request.update_columns(scheduled_at: 1.hour.ago, ends_at: 1.hour.ago + 60.minutes)
+
+      assert_answered(answer(@request, "rejected"), @request, "rejected")
+    end
+
     test "returns not_found for an unknown request" do
       result = Answer.call(id: 0, status: "accepted")
 

@@ -40,6 +40,8 @@ module AppointmentRequests
       # so slot_taken? always reads the latest committed schedule
       Nutritionist.lock.find(service.nutritionist_id)
 
+      reject_expired_requests(guest)
+
       appointment_request = AppointmentRequest.new(
         guest: guest,
         service: service,
@@ -66,10 +68,17 @@ module AppointmentRequests
       Result.new(status: :created, appointment_request: appointment_request, errors: [])
     end
 
+    # A pending request whose date has passed was never answered and can no longer be.
+    # Rejecting it frees the guest from the one-pending-request rule.
+    def self.reject_expired_requests(guest)
+      now = Time.current
+      guest.appointment_requests.pending.past.update_all(status: "rejected", answered_at: now, updated_at: now)
+    end
+
     def self.failure(status, errors)
       Result.new(status: status, appointment_request: nil, errors: errors)
     end
 
-    private_class_method :create_request, :failure
+    private_class_method :create_request, :reject_expired_requests, :failure
   end
 end

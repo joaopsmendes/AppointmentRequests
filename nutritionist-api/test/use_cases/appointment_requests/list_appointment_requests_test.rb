@@ -26,6 +26,20 @@ module AppointmentRequests
       assert_listed(list(status: "rejected"), [appointment_requests(:ana_rejected)], status: "rejected")
     end
 
+    # --- Past requests -----------------------------------------------------------
+
+    test "hides pending requests whose date has already passed" do
+      appointment_requests(:ana_pending_sooner).update_columns(scheduled_at: 1.day.ago, ends_at: 1.day.ago + 30.minutes)
+
+      assert_listed(list, [appointment_requests(:ana_pending_later)])
+    end
+
+    test "still lists past answered requests in the history" do
+      appointment_requests(:ana_accepted).update_columns(scheduled_at: 1.day.ago, ends_at: 1.day.ago + 60.minutes)
+
+      assert_listed(list(status: "accepted"), [appointment_requests(:ana_accepted)], status: "accepted")
+    end
+
     # --- Scope ----------------------------------------------------------------
 
     test "only lists the requests of the given nutritionist" do
