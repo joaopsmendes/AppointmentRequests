@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_11_191928) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_15_210315) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "citext"
@@ -33,7 +33,7 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_11_191928) do
     t.index ["nutritionist_id"], name: "index_appointment_requests_on_nutritionist_id"
     t.index ["service_id"], name: "index_appointment_requests_on_service_id"
     t.check_constraint "ends_at > scheduled_at", name: "ends_after_start"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'accepted'::character varying, 'rejected'::character varying]::text[])", name: "valid_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'accepted'::character varying::text, 'rejected'::character varying::text])", name: "valid_status"
     t.exclusion_constraint "nutritionist_id WITH =, tstzrange(scheduled_at, ends_at) WITH &&", where: "(status)::text = 'accepted'::text", using: :gist, name: "no_overlapping_accepted"
   end
 
@@ -51,7 +51,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_11_191928) do
     t.string "photo_url"
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["name"], name: "index_nutritionists_on_name", opclass: :gin_trgm_ops, using: :gin
+    t.string "name_search", null: false
+    t.index ["name_search"], name: "index_nutritionists_on_name_search", opclass: :gin_trgm_ops, using: :gin
     t.unique_constraint ["license_number"], name: "unique_license_number"
   end
 
@@ -63,7 +64,8 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_11_191928) do
     t.string "location", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
-    t.index ["description"], name: "index_services_on_description", opclass: :gin_trgm_ops, using: :gin
+    t.string "description_search", null: false
+    t.index ["description_search"], name: "index_services_on_description_search", opclass: :gin_trgm_ops, using: :gin
     t.index ["id", "nutritionist_id"], name: "index_services_on_id_and_nutritionist_id", unique: true
     t.index ["nutritionist_id"], name: "index_services_on_nutritionist_id"
     t.check_constraint "duration_minutes > 0", name: "positive_duration"

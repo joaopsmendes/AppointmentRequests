@@ -1,6 +1,7 @@
 ana_first_appointment:
   nutritionist: ana
   description: First appointment
+  description_search: first appointment
   price_cents: 4000
   duration_minutes: 60
   location: Lisboa
@@ -8,6 +9,7 @@ ana_first_appointment:
 ana_online_follow_up:
   nutritionist: ana
   description: Online follow-up
+  description_search: online follow-up
   price_cents: 2500
   duration_minutes: 30
   location: Online
@@ -15,6 +17,7 @@ ana_online_follow_up:
 joao_sports_nutrition:
   nutritionist: joao
   description: Sports nutrition
+  description_search: sports nutrition
   price_cents: 5000
   duration_minutes: 45
   location: Porto
@@ -22,6 +25,7 @@ joao_sports_nutrition:
 rita_follow_up:
   nutritionist: rita
   description: Follow-up appointment
+  description_search: follow-up appointment
   price_cents: 3000
   duration_minutes: 45
   location: Leiria

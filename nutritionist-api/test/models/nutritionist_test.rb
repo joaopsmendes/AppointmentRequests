@@ -23,6 +23,14 @@ class NutritionistTest < ActiveSupport::TestCase
     assert_equal "9999N", nutritionist.license_number
   end
 
+  test "keeps a searchable copy of the name, without accents and in lowercase" do
+    nutritionist = Nutritionist.create!(name: "  João   Gonçalves ", license_number: "9002N")
+    assert_equal "joao goncalves", nutritionist.name_search
+
+    nutritionist.update!(name: "Inês Rocha")
+    assert_equal "ines rocha", nutritionist.reload.name_search
+  end
+
   test "cannot be deleted while it has appointment requests, so the history is kept" do
     ana = nutritionists(:ana)
 

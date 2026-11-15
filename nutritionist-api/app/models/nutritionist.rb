@@ -10,4 +10,6 @@ class Nutritionist < ApplicationRecord
 
   normalizes :name, with: ->(name) { name.squish }
   normalizes :license_number, with: ->(number) { number.strip }
+
+  before_save { self.name_search = SearchText.normalize(name) }
 end

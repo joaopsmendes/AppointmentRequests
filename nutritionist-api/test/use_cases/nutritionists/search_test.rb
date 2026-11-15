@@ -52,6 +52,20 @@ module Nutritionists
       assert_empty names(Search.call(query: "_"))
     end
 
+    # --- Accents ------------------------------------------------------------------------
+
+    test "finds nutritionists by name, ignoring accents" do
+      assert_equal ["João Silva"], names(Search.call(query: "joao"))
+      assert_equal ["Ana Lima"], names(Search.call(query: "Ána"))
+    end
+
+    test "finds nutritionists by service description, ignoring accents" do
+      Service.create!(nutritionist: nutritionists(:rita), description: "Nutrição clínica",
+                      price_cents: 4000, duration_minutes: 60, location: "Leiria")
+
+      assert_equal ["Rita Costa"], names(Search.call(query: "nutricao clinica"))
+    end
+
     test "returns an empty result when nothing matches" do
       result = Search.call(query: "cardiology")
 

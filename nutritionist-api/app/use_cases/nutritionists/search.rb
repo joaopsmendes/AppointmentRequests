@@ -17,14 +17,15 @@ module Nutritionists
       )
     end
 
+    # The search looks at the normalized copies (name_search, description_search: no accents, lowercase)
     def self.build_scope(query)
       scope = Nutritionist.preload(:services).order(:name, :id)
       return scope if query.blank?
 
-      term = "%#{Nutritionist.sanitize_sql_like(query)}%"
-      matching_services = Service.where("description ILIKE ?", term).select(:nutritionist_id)
+      term = "%#{Nutritionist.sanitize_sql_like(SearchText.normalize(query))}%"
+      matching_services = Service.where("description_search ILIKE ?", term).select(:nutritionist_id)
 
-      scope.where("nutritionists.name ILIKE ?", term)
+      scope.where("nutritionists.name_search ILIKE ?", term)
            .or(scope.where(id: matching_services))
     end
 
