@@ -1,6 +1,6 @@
-const euroFormatter = new Intl.NumberFormat('en-IE', { style: 'currency', currency: 'EUR' })
+const amountFormatter = new Intl.NumberFormat('en-IE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// convert cents to euros and format as a currency string.
+// Converts cents to euros
 export function formatPrice(priceCents) {
-  return euroFormatter.format(priceCents / 100)
+  return `€ ${amountFormatter.format(priceCents / 100)}`
 }

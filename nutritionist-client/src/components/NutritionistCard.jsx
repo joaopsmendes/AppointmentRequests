@@ -51,7 +51,7 @@ function NutritionistCard({ nutritionist, onSchedule }) {
               <select
                 value={selectedServiceId}
                 onChange={(event) => setSelectedServiceId(Number(event.target.value))}
-                className="rounded border border-slate-200 bg-white px-2 py-1 text-slate-600"
+                className="cursor-pointer rounded bg-transparent py-1 text-slate-600 outline-none hover:text-brand-600 focus-visible:ring-1 focus-visible:ring-brand-500"
               >
                 {services.map((service) => (
                   <option key={service.id} value={service.id}>
