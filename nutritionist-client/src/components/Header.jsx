@@ -9,9 +9,10 @@ function Header() {
           Nutrium
         </Link>
 
-        <span className="hidden text-sm sm:inline">
-          Are you a nutrition professional? Get to know our software →
-        </span>
+        <Link to="/professionals" className="text-sm hover:underline">
+          <span className="hidden sm:inline">Are you a nutrition professional? </span>
+          See your requests →
+        </Link>
       </div>
     </header>
   )
