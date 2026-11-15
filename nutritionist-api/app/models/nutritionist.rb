@@ -1,7 +1,9 @@
 # app/models/nutritionist.rb
 class Nutritionist < ApplicationRecord
-  has_many :services, dependent: :destroy
+  # Order matters: callbacks run in declaration order, so appointment_requests
+  # are checked before services are destroyed.
   has_many :appointment_requests, dependent: :restrict_with_error
+  has_many :services, dependent: :destroy
 
   validates :name, :license_number, presence: true
   validates :license_number, uniqueness: true
