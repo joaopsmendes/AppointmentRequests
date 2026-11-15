@@ -49,13 +49,14 @@ Desafio: pesquisa de nutricionistas e pedidos de marcação (Rails + PostgreSQL 
 | `CHECK` de preço e duração positivos nos serviços | Serviços coerentes |
 | Índice único em `nutritionists.license_number` | Sem nutricionistas duplicados |
 | Índice `(nutritionist_id, status)` | Lista de pedidos do nutricionista |
-| Índices trigram (`pg_trgm`) em `nutritionists.name` e `services.description` | Pesquisa por nome e por serviço com `ILIKE '%termo%'` |
+| Colunas `nutritionists.name_search` e `services.description_search` (cópias sem acentos e em minúsculas, mantidas pelos modelos) | Pesquisa que ignora acentos, sem funções SQL |
+| Índices trigram (`pg_trgm`) nessas colunas | Pesquisa com `ILIKE '%termo%'` e por semelhança (`<%`) |
 | Chaves estrangeiras e `NOT NULL` | Integridade |
 
 ## 3. Use cases
 
 ### Guest
-- **Pesquisar** por nome do nutricionista ou por descrição do serviço, sem distinguir maiúsculas. Devolve os nutricionistas com os seus serviços e preços, paginado e com `preload(:services)` para evitar N+1.
+- **Pesquisar** por nome do nutricionista ou por descrição do serviço, sem distinguir maiúsculas nem acentos ("joao" encontra "João") e tolerando erros de escrita ("ana lma" encontra "Ana Lima", com a *word similarity* do `pg_trgm`). Os matches exatos aparecem primeiro. Devolve os nutricionistas com os seus serviços e preços, paginado e com `preload(:services)` para evitar N+1.
 - **Criar AppointmentRequest** (nome, email, serviço, data e hora):
   - A data tem de ser futura.
   - O serviço tem de pertencer ao nutricionista escolhido (o nutricionista vem sempre do serviço).
@@ -149,11 +150,11 @@ O Rails já regista cada pedido (parâmetros, queries, código HTTP) e o backtra
 ## 8. Trabalho Futuro
 
 - **Confirmação antes de aceitar** com os pedidos que vão ser rejeitados (nome e hora): um `GET /api/appointment_requests/:id/conflicts` chamado quando o modal abre, ou a contagem de pendentes sobrepostos em cada pedido da lista, numa só query (sem N+1). A definição de "conflito" teria de ser a mesma usada pelo `Answer`.
-- **Pesquisa sem acentos** ("joao" encontra "João"): extensão `unaccent` com uma função `IMMUTABLE`, usada nos índices trigram e na query. Obriga a passar do `schema.rb` para o `structure.sql`.
+- **Horários ocupados no modal de marcação:** um `GET /api/nutritionists/:id/busy_slots?date=` com os intervalos aceites desse dia (só as horas, sem dados dos guests). O modal mostraria "Already booked on this day: 10:00–11:00" e avisaria se a hora escolhida, mais a duração do serviço, se sobrepusesse. O `datetime-local` não deixa desativar horas, por isso seria um aviso e não horas bloqueadas. O Create continua a ser a garantia (409).
 - **Filtro por localização** na pesquisa (o campo "Location" do mockup).
 - **Job agendado para os pendentes expirados:** rejeitá-los no momento em que a data passa, com um email "o nutricionista não respondeu a tempo".
 - **Idempotency-Key no POST:** o índice único já impede pedidos duplicados.
-- **Motor de pesquisa externo:** `pg_trgm` chega a esta escala.
+- **Motor de pesquisa externo** (Elasticsearch, Meilisearch): o `pg_trgm` com as colunas normalizadas chega a esta escala, sem um serviço extra para correr e sincronizar.
 - **Autenticação e calendário de disponibilidade:** fora do enunciado.
 - **Outbox para os emails:** `deliver_later` chega aqui. Em produção, tabela outbox mais um worker com retries, porque um email não é atómico com o commit.
 - **Auditoria das decisões:** passar o aceitar/rejeitar a `POST /api/appointment_requests/:id/decisions`, que cria um registo imutável por decisão (pedido, estado anterior e novo, data e, havendo autenticação, quem decidiu). O PATCH atualiza o estado no sítio e perde o histórico. O que dá auditoria é o registo, não o verbo POST.

@@ -1,4 +1,3 @@
-# app/models/guest.rb
 class Guest < ApplicationRecord
   has_many :appointment_requests, dependent: :restrict_with_error
 
