@@ -1,4 +1,3 @@
-# app/models/service.rb
 class Service < ApplicationRecord
   belongs_to :nutritionist
   has_many :appointment_requests, dependent: :restrict_with_error

@@ -1,4 +1,3 @@
-# app/models/appointment_request.rb
 class AppointmentRequest < ApplicationRecord
   belongs_to :nutritionist
   belongs_to :service
