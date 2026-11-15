@@ -36,6 +36,10 @@ module AppointmentRequests
       service = Service.find_by(id: service_id)
       return failure(:not_found, ["Service not found"]) unless service
 
+      # Pessimistic lock: creates and accepts for the same nutritionist run one at a time,
+      # so slot_taken? always reads the latest committed schedule
+      Nutritionist.lock.find(service.nutritionist_id)
+
       appointment_request = AppointmentRequest.new(
         guest: guest,
         service: service,

@@ -24,8 +24,8 @@ module AppointmentRequests
         attempts += 1
         answer(appointment_request, status)
       rescue ActiveRecord::Deadlocked
-        # Two overlapping accepts at the same time can deadlock.
-        # PostgreSQL cancels one, and retrying it returns the correct 409.
+        # Safety net: the nutritionist lock already queues concurrent answers, but if PostgreSQL
+        # ever cancels a transaction with a deadlock, retrying it returns the correct result.
         retry if attempts < MAX_ATTEMPTS
         raise
       end
@@ -37,6 +37,10 @@ module AppointmentRequests
 
       begin
         ActiveRecord::Base.transaction do
+          # Pessimistic lock: answers and creates for the same nutritionist run one at a time,
+          # so reject_conflicting_requests always sees a request created just before.
+          Nutritionist.lock.find(appointment_request.nutritionist_id)
+
           answered = appointment_request.answer!(status)
 
           # Already answered (double click or two tabs): stop here, nothing else to do.
@@ -72,7 +76,7 @@ module AppointmentRequests
     end
 
     # Concurrency Guarantee
-    # Pending requests left without a slot by the accepted one:
+    # Rejects pending requests left without a slot:
     # - the same guest at the same date and time (challenge rule);
     # - any request of the same nutritionist overlapping the accepted interval.
     def self.reject_conflicting_requests(accepted)

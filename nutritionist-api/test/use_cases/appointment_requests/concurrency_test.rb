@@ -66,6 +66,22 @@ module AppointmentRequests
       assert_not_nil request.answered_at
     end
 
+    test "a request created while an overlapping one is being accepted never stays pending" do
+      accepted = pending_request("accepted", at: @slot)    # 10:00-11:00
+      email = "newcomer@#{EMAIL_DOMAIN}"
+
+      answer_status, create_status = run_concurrently(
+        -> { Answer.call(id: accepted.id, status: "accepted").status },
+        -> { create_request(email: email, scheduled_at: @slot + 30.minutes) } # 10:30-11:30
+      )
+
+      assert_equal :ok, answer_status
+      assert_equal "accepted", accepted.reload.status
+      # Either the request was refused (409) or it was created and then auto-rejected by the accept.
+      assert_includes %i[conflict created], create_status
+      assert_not AppointmentRequest.pending.joins(:guest).exists?(guests: { email: email })
+    end
+
     private
 
     # Starts every block in its own thread and connection, releases them together
