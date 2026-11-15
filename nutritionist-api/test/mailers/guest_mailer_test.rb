@@ -35,6 +35,16 @@ class GuestMailerTest < ActionMailer::TestCase
     refute_includes mail.body.to_s, "was accepted"
   end
 
+  test "shows the appointment time in Lisbon time, not UTC" do
+    request = appointment_requests(:ana_accepted)
+
+    request.scheduled_at = Time.utc(2027, 7, 1, 9, 0) # summer: Lisbon is UTC+1
+    assert_includes GuestMailer.answered(request).body.to_s, "Date: 01/07/2027 10:00"
+
+    request.scheduled_at = Time.utc(2027, 1, 15, 9, 0) # winter: Lisbon is UTC+0
+    assert_includes GuestMailer.answered(request).body.to_s, "Date: 15/01/2027 09:00"
+  end
+
   private
 
   def assert_email_body(mail, expected_lines)

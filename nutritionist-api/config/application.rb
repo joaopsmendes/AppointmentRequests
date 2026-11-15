@@ -21,7 +21,8 @@ module NutritionistApi
     # These settings can be overridden in specific environments using the files
     # in config/environments, which are processed later.
     #
-    # config.time_zone = "Central Time (US & Canada)"
+    # Times are still stored in UTC; this zone is used to display them (e.g. in emails).
+    config.time_zone = "Lisbon"
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Only loads a smaller set of middleware suitable for API only apps.
