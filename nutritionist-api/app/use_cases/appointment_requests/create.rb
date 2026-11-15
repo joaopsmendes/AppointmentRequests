@@ -25,6 +25,7 @@ module AppointmentRequests
       rescue ActiveRecord::RecordNotUnique
       # Two concurrent requests from the same guest can both pass the validation;
       # the partial unique index one_pending_per_guest rejects the second one.
+        Rails.logger.info("[Create] concurrent request refused by one_pending_per_guest service_id=#{service_id}")
         failure(:conflict, [PENDING_REQUEST_MESSAGE])
       end
     end
@@ -72,7 +73,10 @@ module AppointmentRequests
     # Rejecting it frees the guest from the one-pending-request rule.
     def self.reject_expired_requests(guest)
       now = Time.current
-      guest.appointment_requests.pending.past.update_all(status: "rejected", answered_at: now, updated_at: now)
+      rejected_count = guest.appointment_requests.pending.past.update_all(status: "rejected", answered_at: now, updated_at: now)
+      if rejected_count.positive?
+        Rails.logger.info("[Create] rejected expired pending requests guest_id=#{guest.id} count=#{rejected_count}")
+      end
     end
 
     def self.failure(status, errors)
