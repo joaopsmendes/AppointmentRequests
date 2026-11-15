@@ -32,7 +32,7 @@ module AppointmentRequests
       rescue ActiveRecord::Deadlocked
         # Safety net: the nutritionist lock already queues concurrent answers, but if PostgreSQL
         # ever cancels a transaction with a deadlock, retrying it returns the correct result.
-        Rails.logger.warn("[Answer] deadlock request_id=#{appointment_request.id} attempt=#{attempts}/#{MAX_ATTEMPTS}")
+        Rails.logger.warn("[Answer] deadlock nutritionist_id=#{appointment_request.nutritionist_id} request_id=#{appointment_request.id} attempt=#{attempts}/#{MAX_ATTEMPTS}")
         retry if attempts < MAX_ATTEMPTS
         raise
       end
@@ -64,7 +64,7 @@ module AppointmentRequests
         end
 
         if auto_rejected_ids.any?
-          Rails.logger.info("[Answer] auto-rejected accepted_id=#{appointment_request.id} rejected_ids=#{auto_rejected_ids}")
+          Rails.logger.info("[Answer] auto-rejected nutritionist_id=#{appointment_request.nutritionist_id} accepted_id=#{appointment_request.id} rejected_ids=#{auto_rejected_ids}")
         end
 
         # After the commit: an email cannot be undone by a rollback.
@@ -79,7 +79,7 @@ module AppointmentRequests
       rescue ActiveRecord::StatementInvalid => e
         # The exclusion constraint refused the accept: it overlaps an accepted appointment.
         if e.cause.is_a?(PG::ExclusionViolation)
-          Rails.logger.info("[Answer] overlap refused by no_overlapping_accepted request_id=#{appointment_request.id}")
+          Rails.logger.info("[Answer] overlap refused by no_overlapping_accepted nutritionist_id=#{appointment_request.nutritionist_id} request_id=#{appointment_request.id}")
           return failure(:conflict, [OVERLAP_MESSAGE])
         end
         # Any other database error (including a deadlock) goes up to the caller.
