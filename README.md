@@ -14,7 +14,7 @@ Built as a full-stack technical challenge with **Ruby on Rails** (API) and **Rea
 - [Running the tests](#running-the-tests)
 - [Try it](#try-it)
 - [API](#api)
-- [Design decisions](#design-decisions)
+- [Notes and decisions](#notes-and-decisions)
 - [Known limitations and future work](#known-limitations-and-future-work)
 
 ## Stack
@@ -130,61 +130,52 @@ The seeds create 10 nutritionists with services at different prices and location
 
 Errors are returned as `{ "errors": ["..."] }`. Lists are paginated with `{ data: [...], meta: { page, per_page, total_count, total_pages } }` (`per_page` is capped at 25).
 
-## Design decisions
+## Notes and decisions
 
-### The database guarantees the rules
-Model validations give friendly error messages, but two simultaneous requests can both pass them. The rules that must always hold are PostgreSQL constraints:
+### Main decisions
+- **The database enforces the rules.** Model validations give friendly error messages, but two simultaneous requests can both pass them. The rules that must always hold are PostgreSQL constraints:
 
-| Rule | Constraint |
-|---|---|
-| A guest has at most one pending request | Partial unique index on `guest_id WHERE status = 'pending'` |
-| A nutritionist never has two overlapping accepted appointments | Exclusion constraint on `(nutritionist_id WITH =, tstzrange(scheduled_at, ends_at) WITH &&) WHERE status = 'accepted'` |
-| A request's nutritionist is always the service's nutritionist | Composite foreign key `(service_id, nutritionist_id) -> services (id, nutritionist_id)` |
-| Valid intervals, statuses, prices and durations | Check constraints |
-| Guests are identified by email, case-insensitively | `citext` column with a unique index |
+  | Rule | Constraint |
+  |---|---|
+  | A guest has at most one pending request | Partial unique index on `guest_id WHERE status = 'pending'` |
+  | A nutritionist never has two overlapping accepted appointments | Exclusion constraint: `nutritionist_id WITH =, tstzrange(scheduled_at, ends_at) WITH &&`, only for accepted requests |
+  | A request's nutritionist is always its service's nutritionist | Composite foreign key `(service_id, nutritionist_id)` |
+  | Guests are identified by email, case-insensitively | `citext` with a unique index |
 
-`ends_at` is computed from the service duration when the request is created (never sent by the client) and stored, because the exclusion constraint can only use columns of its own table.
-
-### Business rules
-- **A pending request does not reserve the slot.** Several guests may request the same time; only an accepted appointment takes it.
-- **Accepting a request** (in one transaction) rejects every other pending request that lost its slot: the same guest at the same time (the challenge's rule) and also **other guests' overlapping requests**, which would otherwise wait for a slot that no longer exists.
-- **Back-to-back appointments are allowed:** intervals are half-open (`[start, end)`), so 10:00–11:00 and 11:00–12:00 do not overlap.
-- **Answering is a conditional UPDATE** (`WHERE status = 'pending'`), so a double click or two open tabs cannot answer the same request twice (409).
-- **Pending requests whose date has passed** are rejected when the guest makes a new request (otherwise the one-pending rule would block the guest forever). They are hidden from the pending list and cannot be accepted (422).
+- **A pending request does not reserve the slot.** Several guests may ask for the same time, and the nutritionist chooses. Only an accepted appointment takes the slot.
+- **Accepting rejects every pending request that lost its slot:** the same guest at the same time (the challenge's rule) and also other guests' overlapping requests, which would otherwise wait for a slot that no longer exists. The response lists the ids rejected automatically.
+- **Back-to-back appointments are allowed:** intervals are half-open (`[start, end)`), so 10:00–11:00 and 11:00–12:00 do not overlap. `ends_at` is computed from the service duration, never sent by the client.
+- **Expired pending requests** (date passed with no answer) are rejected when the guest makes a new request. Otherwise the one-pending rule would block the guest forever. They are hidden from the pending list and cannot be accepted.
+- **Emails are sent after the transaction commits** (`NotificationService` → `deliver_later`): a rollback cannot undo an email, so a failed accept never notifies anyone. Times are shown in Lisbon time; data is stored in UTC.
 
 ### Concurrency
-| Case | Guarantee |
-|---|---|
-| The same guest sends two requests at once | Partial unique index -> 409 |
-| Two overlapping requests are accepted at once | Exclusion constraint -> 409 |
-| A request is created while an overlapping one is being accepted | Pessimistic lock on the nutritionist row (`SELECT ... FOR UPDATE`) in both use cases: the second one waits and sees what the first one committed |
+The frontend disables buttons while a request is in flight, but the backend cannot rely on that: a double click, two open tabs or a direct API call can always race. These are the cases found, and how each one is handled:
 
-The lock only queues requests for the **same** nutritionist. Each case has a test with real threads (`concurrency_test.rb`). Alternatives considered: `SERIALIZABLE` isolation with retries, and optimistic locking. Both need retry logic in both use cases.
+| # | Race | What could go wrong | How it is prevented |
+|---|---|---|---|
+| 1 | The same guest sends two requests at once | Both pass the validation, and the guest ends up with two pending requests | The partial unique index rejects the second insert → 409 |
+| 2 | Two overlapping requests are accepted at once | Double booking | The exclusion constraint rejects the second accept → 409 |
+| 3 | The same request is answered twice (double click, two tabs) | Answered twice, two emails | A conditional `UPDATE ... WHERE status = 'pending'`: the second one updates 0 rows → 409 |
+| 4 | A request is created while an overlapping one is being accepted | Each side checks before the other commits: the new request passes the "slot taken" check, and the accept does not see it to reject it. It stays pending in a taken slot, and its guest is blocked. | A **pessimistic lock on the nutritionist row** (`SELECT ... FOR UPDATE`) at the start of both Create and Answer. The second one waits and then sees what the first one committed. |
 
-### Emails
-Emails are sent **after the transaction commits**, through a `NotificationService` (`GuestMailer.answered(...).deliver_later`). An email cannot be undone by a rollback, so a failed accept never notifies anyone. Guests rejected automatically are notified too. Times in emails are shown in Lisbon time (`config.time_zone = "Lisbon"`; data is stored in UTC).
+Cases 1–3 are about rows the database can check when they are written, so a constraint is enough. Case 4 depends on a row that does not exist yet (the new request), which no constraint can see. That is the only place that needed a lock. The lock only queues requests for the **same** nutritionist, and both use cases lock in the same order (nutritionist, then requests), so they cannot deadlock each other; a retry on deadlock stays as a safety net.
+
+Each case is covered by a test with real threads and committed transactions (concurrency_test.rb).
 
 ### Search
-- Matches the nutritionist's name **or** a service description, case-insensitively.
-- **Accent-insensitive** ("joao" finds "João"): nutritionists and services keep a normalized copy of the searchable text (`name_search`, `description_search`, without accents and in lowercase), maintained by the models. The query is normalized with the same function. This avoids a custom SQL function, so the schema stays in `schema.rb`.
-- **Typo-tolerant** ("ana lma" finds "Ana Lima"): pg_trgm's word similarity operator (`<%`). Exact matches are listed first.
-- Both use the **trigram GIN indexes** on the normalized columns. An external search engine (Elasticsearch, Meilisearch) would be one more service to run and keep in sync, which this scale does not need.
+- Matches the nutritionist's name or a service description, ignoring case and accents ("joao" finds "João"). Nutritionists and services keep a normalized copy of that text (`name_search`, `description_search`), maintained by the models, and the query is normalized the same way.
+- Tolerates typos ("ana lma" finds "Ana Lima") with pg_trgm's word similarity. Exact matches come first.
+- Both use trigram GIN indexes. An external search engine would be one more service to run and keep in sync.
 
-### Code structure
-- **Use cases** (`app/use_cases`) hold the business logic and return a `Result` with a symbolic status (`:ok`, `:created`, `:invalid`, `:conflict`, `:not_found`). Controllers only map that status to HTTP, and serializers build the JSON.
-- **Logs** are added only for the decisions the code takes silently (requests rejected automatically, refused overlaps, deadlock retries), as `[UseCase] event key=value` with ids only.
-
-### Frontend
-- There is **no authentication** (not required by the challenge). The nutritionist picks their profile on `/professionals`.
-- After answering a request, the list is **reloaded from the API** instead of updated locally: accepting can reject other requests and change the pagination, and the server is the source of truth.
-- The requests page has **Pending / Accepted / Rejected tabs** in place of the mockup's history icon, and the card's **"Website"** button is a non-functional placeholder, as the challenge allows.
-- Responses that arrive out of order (e.g. clicking quickly through pages) are ignored with an effect cleanup.
+### Code
+- **Backend:** use cases (`app/use_cases`) hold the business logic and return a `Result` with a symbolic status (`:ok`, `:created`, `:invalid`, `:conflict`, `:not_found`); controllers only map it to HTTP. Logs are added only for decisions taken silently (requests rejected automatically, refused overlaps, deadlock retries), with ids only.
+- **Frontend:** there is no authentication (not required): the nutritionist picks their profile on `/professionals`. After an answer, the list is reloaded from the API, because accepting can reject other requests. The mockup's history icon became Pending / Accepted / Rejected tabs, and the "Website" button is a placeholder, as the challenge allows.
 
 ## Known limitations and future work
 - **Confirmation before accepting**, listing the requests that will be rejected automatically. Today the modal warns about it and a message reports how many were rejected.
 - **Busy slots in the booking modal:** show the nutritionist's accepted appointments for the chosen day. Today a taken slot is refused when the request is submitted (409).
 - **Location filter** (the mockup's "Location" field) and **caching** of the search.
+- **Personal Page** button (shown as "Website", like the mockup): currently a non-functional placeholder, as the challenge allows.
 - **Scheduled job** to reject pending requests as soon as their date passes, with an email to the guest.
 - **Persistent job queue / outbox for emails:** `deliver_later` uses the in-memory adapter, so an email can be lost if the process dies right after the commit.
 - **Authentication, nutritionists' working hours, i18n**, and frontend tests.
-- Ruby 3.0.2 is past its end of life; upgrading to a supported version would be the first maintenance task.
