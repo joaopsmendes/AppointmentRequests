@@ -15,7 +15,6 @@ class AppointmentRequest < ApplicationRecord
   scope :overlapping, ->(from, to) {
     where("tstzrange(scheduled_at, ends_at) && tstzrange(?, ?)", from, to)
   }
-  scope :upcoming, -> { where("scheduled_at > ?", Time.current) }
   scope :past, -> { where("scheduled_at <= ?", Time.current) }
 
   def past?

@@ -3,6 +3,8 @@ import { Link, useParams } from 'react-router'
 import { listAppointmentRequests } from '../api/appointmentRequests'
 import AnswerRequestModal from '../components/AnswerRequestModal'
 import AppointmentRequestCard from '../components/AppointmentRequestCard'
+import HistoryModal from '../components/HistoryModal'
+import { ClockIcon } from '../components/icons'
 
 const PER_PAGE = 3
 
@@ -24,6 +26,7 @@ function PendingRequestsPage() {
   const [reloadCount, setReloadCount] = useState(0)
   const [answering, setAnswering] = useState(null)
   const [notice, setNotice] = useState(null)
+  const [showHistory, setShowHistory] = useState(false)
 
   useEffect(() => {
     let ignore = false
@@ -122,6 +125,10 @@ function PendingRequestsPage() {
                 </ArrowButton>
               </div>
             )}
+
+            <ArrowButton label="History" onClick={() => setShowHistory(true)}>
+              <ClockIcon className="mx-auto h-4 w-4" />
+            </ArrowButton>
           </div>
         </div>
 
@@ -161,6 +168,8 @@ function PendingRequestsPage() {
           </div>
         )}
       </div>
+
+      {showHistory && <HistoryModal nutritionistId={nutritionistId} onClose={() => setShowHistory(false)} />}
 
       {answering && (
         <AnswerRequestModal

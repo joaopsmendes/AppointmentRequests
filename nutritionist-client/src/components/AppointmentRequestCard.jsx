@@ -1,5 +1,6 @@
 import { formatDate, formatTime } from '../utils/dates'
 import Avatar from './Avatar'
+import StatusBadge from './StatusBadge'
 import { CalendarIcon, ClockIcon } from './icons'
 
 function AppointmentRequestCard({ appointmentRequest, onAnswer }) {
@@ -39,15 +40,6 @@ function AppointmentRequestCard({ appointmentRequest, onAnswer }) {
       )}
     </article>
   )
-}
-
-const BADGE_STYLES = {
-  accepted: 'bg-brand-50 text-brand-600',
-  rejected: 'bg-red-50 text-red-600',
-}
-
-function StatusBadge({ status }) {
-  return <span className={`rounded px-2 py-0.5 font-medium capitalize ${BADGE_STYLES[status]}`}>{status}</span>
 }
 
 export default AppointmentRequestCard

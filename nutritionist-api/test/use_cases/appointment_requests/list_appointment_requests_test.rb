@@ -26,6 +26,24 @@ module AppointmentRequests
       assert_listed(list(status: "rejected"), [appointment_requests(:ana_rejected)], status: "rejected")
     end
 
+    test "lists several statuses together (history), the most recent answer first" do
+      accepted = appointment_requests(:ana_accepted)
+      rejected = appointment_requests(:ana_rejected)
+      accepted.update_columns(answered_at: 2.days.ago)
+      rejected.update_columns(answered_at: 1.hour.ago)
+
+      result = list(status: "accepted,rejected")
+
+      assert_equal :ok, result.status
+      assert_equal [rejected.id, accepted.id], result.records.map(&:id) # no pending requests
+    end
+
+    test "returns invalid when one of several statuses is unknown" do
+      result = list(status: "accepted,cancelled")
+
+      assert_failure(result, :invalid, ["Status must be one of: pending, accepted, rejected"])
+    end
+
     # --- Past requests -----------------------------------------------------------
 
     test "hides pending requests whose date has already passed" do
