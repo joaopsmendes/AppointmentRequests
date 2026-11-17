@@ -33,6 +33,56 @@ module Nutritionists
       assert_equal ["First appointment", "Online follow-up"], ana.services.map(&:description).sort
     end
 
+    test "filters by the location of a service, ignoring case" do
+      result = Search.call(location: "PORTO")
+
+      assert_equal ["João Silva"], names(result)
+    end
+
+    test "filters by location ignoring accents, in the search and in the data" do
+      assert_equal ["João Silva"], names(Search.call(location: "Pórto"))
+
+      services(:rita_follow_up).update!(location: "Rua Direita 5, Évora")
+      assert_equal ["Rita Costa"], names(Search.call(location: "evora"))
+    end
+
+    test "keeps every service of a nutritionist matched by the location of one of them" do
+      ana = Search.call(location: "online").records.first
+
+      assert_equal "Ana Lima", ana.name
+      assert_equal ["First appointment", "Online follow-up"], ana.services.map(&:description).sort
+    end
+
+    test "combines the query and the location" do
+      assert_equal ["Rita Costa"], names(Search.call(query: "follow-up", location: "leiria"))
+      assert_equal ["Ana Lima"], names(Search.call(query: "follow-up", location: "online"))
+    end
+
+    test "matches the service description and the location on the same service" do
+      # Ana has an online follow-up and a first appointment in Lisboa, but no follow-up in Lisboa
+      assert_empty Search.call(query: "follow-up", location: "lisboa").records
+    end
+
+    test "matches the name with a service in the location" do
+      assert_equal ["Ana Lima"], names(Search.call(query: "ana", location: "lisboa"))
+      assert_empty Search.call(query: "ana", location: "porto").records
+    end
+
+    test "returns nothing when no service is in the location" do
+      result = Search.call(query: "sports", location: "lisboa")
+
+      assert_empty result.records
+      assert_equal 0, result.total_count
+    end
+
+    test "treats LIKE wildcards in the location as plain text" do
+      assert_empty Search.call(location: "%").records
+    end
+
+    test "ignores a blank location" do
+      assert_equal 3, Search.call(location: "  ").total_count
+    end
+
     test "preloads services to avoid N+1 queries" do
       result = Search.call(query: "")
 

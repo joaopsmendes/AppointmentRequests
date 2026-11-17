@@ -102,7 +102,7 @@ npm run lint
 
 The seeds create 10 nutritionists with services at different prices and locations. Nutritionist **Ana Lima** (license 3176N) has a ready-made scenario. Its id is printed at the end of `bin/rails db:seed`.
 
-1. **Search** on `/` for `sports`, `follow-up`, `joao` (no accent) or `ana lma` (typo).
+1. **Search** on `/` for `sports`, `follow-up`, `joao` (no accent) or `ana lma` (typo). Add a location, e.g. `sports` in `porto` or `follow-up` in `online`.
 2. **Request an appointment:** click "Schedule appointment" on any card, then fill in the name, email, date and time.
 3. **Answer requests:** click the header link "Are you a nutrition professional? See your requests →" (it opens `/professionals`), choose Ana Lima, and accept **Carla Nunes** (10:00–11:00):
    - **Diogo Pires** (10:30, overlapping) is rejected automatically;
@@ -118,7 +118,7 @@ The seeds create 10 nutritionists with services at different prices and location
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/api/nutritionists?q=&page=&per_page=` | Search nutritionists by name or service description |
+| GET | `/api/nutritionists?q=&location=&page=&per_page=` | Search nutritionists by name or service description, optionally only those with a service in a location |
 | POST | `/api/appointment_requests` | Create a request: `{ appointment_request: { name, email, service_id, scheduled_at } }` |
 | GET | `/api/nutritionists/:id/appointment_requests?status=&page=&per_page=` | A nutritionist's requests by one or more statuses, separated by commas (`pending` by default; `accepted,rejected` for the history). Pending requests are ordered by appointment date, answered ones by the most recent answer |
 | PATCH | `/api/appointment_requests/:id` | Answer a request: `{ status: "accepted" \| "rejected" }`. Returns the request and the ids rejected automatically |
@@ -169,6 +169,8 @@ Each case is covered by a test with real threads and committed transactions (`co
 - Matches the nutritionist's name or a service description, ignoring case and accents ("joao" finds "João"). Nutritionists and services keep a normalized copy of that text (`name_search`, `description_search`), maintained by the models, and the query is normalized the same way.
 - Tolerates typos ("ana lma" finds "Ana Lima") with pg_trgm's word similarity. Exact matches come first.
 - Both use trigram GIN indexes. An external search engine would be one more service to run and keep in sync.
+- The optional **location** filter matches part of a service's location, ignoring case (`porto`, `online`). With a search term, the service description and the location must match the **same** service, so `follow-up` in `lisboa` does not return a nutritionist whose follow-up is online. Like the main search, it ignores accents (`Pórto` finds "Porto") through a normalized copy (`location_search`), but it does not tolerate typos.
+- Each card opens on the service that matched the search and the location (e.g. `sports` opens on "Sports nutrition"). The frontend repeats the accent-free text comparison for this, but not the typo tolerance: a typo match opens on the first service.
 
 ### Code
 - **Backend:** use cases (`app/use_cases`) hold the business logic and return a `Result` with a symbolic status (`:ok`, `:created`, `:invalid`, `:conflict`, `:not_found`); controllers only map it to HTTP. Logs are added only for decisions taken silently (requests rejected automatically, refused overlaps, deadlock retries), with ids only.
@@ -177,7 +179,7 @@ Each case is covered by a test with real threads and committed transactions (`co
 ## Known limitations and future work
 - **Confirmation before accepting**, listing the requests that will be rejected automatically. Today the modal warns about it and a message reports how many were rejected.
 - **Busy slots in the booking modal:** show the nutritionist's accepted appointments for the chosen day. Today a taken slot is refused when the request is submitted (409).
-- **Location filter** (the mockup's "Location" field) and **caching** of the search.
+- **Caching** of the search, and typo tolerance in the location filter.
 - **Audit trail:** the history shows each request's final status and answer date, but not who decided. A `decisions` table with one record per answer would keep the full trail.
 - **Reliable background jobs:** a persistent queue (or outbox) for emails, which today can be lost if the process dies right after the commit, and a scheduled job to reject pending requests as soon as their date passes.
 - **Authentication and nutritionists' working hours**, with time zones per location.

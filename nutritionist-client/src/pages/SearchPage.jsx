@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { searchNutritionists } from '../api/nutritionists'
 import NutritionistCard from '../components/NutritionistCard'
+import { MapPinIcon } from '../components/icons'
 import Pagination from '../components/Pagination'
 import ScheduleAppointmentModal from '../components/ScheduleAppointmentModal'
 
@@ -9,6 +10,8 @@ const PER_PAGE = 3
 function SearchPage() {
   const [inputValue, setInputValue] = useState('')
   const [query, setQuery] = useState('')
+  const [locationInput, setLocationInput] = useState('')
+  const [location, setLocation] = useState('')
   const [page, setPage] = useState(1)
 
   const [result, setResult] = useState(null)
@@ -24,7 +27,7 @@ function SearchPage() {
       setIsLoading(true)
       setError(null)
       try {
-        const response = await searchNutritionists({ query, page, perPage: PER_PAGE })
+        const response = await searchNutritionists({ query, location, page, perPage: PER_PAGE })
         if (!ignore) setResult(response)
       } catch (requestError) {
         if (!ignore) setError(requestError)
@@ -38,11 +41,12 @@ function SearchPage() {
     return () => {
       ignore = true
     }
-  }, [query, page])
+  }, [query, location, page])
 
   function handleSubmit(event) {
     event.preventDefault()
     setQuery(inputValue.trim())
+    setLocation(locationInput.trim())
     setPage(1)
   }
 
@@ -54,7 +58,7 @@ function SearchPage() {
   return (
     <>
       <section className="bg-gradient-to-r from-brand-500 to-brand-600">
-        <form onSubmit={handleSubmit} className="mx-auto flex max-w-5xl gap-3 px-4 py-8">
+        <form onSubmit={handleSubmit} className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-8 sm:flex-row">
           <input
             type="search"
             value={inputValue}
@@ -63,6 +67,17 @@ function SearchPage() {
             aria-label="Search by nutritionist name or service"
             className="min-w-0 flex-1 rounded bg-white px-4 py-3 text-sm shadow-sm outline-none focus:ring-2 focus:ring-accent-500"
           />
+          <div className="relative min-w-0 flex-1">
+            <input
+              type="search"
+              value={locationInput}
+              onChange={(event) => setLocationInput(event.target.value)}
+              placeholder="Location, e.g. Porto or Online"
+              aria-label="Location"
+              className="w-full rounded bg-white px-4 py-3 pr-10 text-sm shadow-sm outline-none focus:ring-2 focus:ring-accent-500"
+            />
+            <MapPinIcon className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-500" />
+          </div>
           <button
             type="submit"
             className="rounded bg-accent-500 px-6 py-3 text-sm font-medium text-white shadow-sm hover:bg-accent-600"
@@ -85,17 +100,20 @@ function SearchPage() {
           <>
             <p className="mb-4 text-sm text-slate-500">
               {result.meta.total_count} nutritionist(s) found{query && ` for "${query}"`}
+              {location && ` in "${location}"`}
             </p>
             {result.data.length === 0 ? (
               <p className="rounded bg-white p-6 text-slate-500 shadow-sm">
-                No nutritionists match your search. Try another name or service.
+                No nutritionists match your search. Try another name, service or location.
               </p>
             ) : (
               <div className="flex flex-col gap-4">
                 {result.data.map((nutritionist) => (
                   <NutritionistCard
-                    key={nutritionist.id}
+                    key={`${nutritionist.id}-${query}-${location}`}
                     nutritionist={nutritionist}
+                    query={query}
+                    location={location}
                     onSchedule={(chosenNutritionist, service) => setScheduling({ nutritionist: chosenNutritionist, service })}
                   />
                 ))}

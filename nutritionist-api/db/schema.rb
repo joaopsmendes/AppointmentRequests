@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[7.1].define(version: 2026_11_15_210315) do
+ActiveRecord::Schema[7.1].define(version: 2026_11_17_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "btree_gist"
   enable_extension "citext"
@@ -65,8 +65,10 @@ ActiveRecord::Schema[7.1].define(version: 2026_11_15_210315) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.string "description_search", null: false
+    t.string "location_search", null: false
     t.index ["description_search"], name: "index_services_on_description_search", opclass: :gin_trgm_ops, using: :gin
     t.index ["id", "nutritionist_id"], name: "index_services_on_id_and_nutritionist_id", unique: true
+    t.index ["location_search"], name: "index_services_on_location_search", opclass: :gin_trgm_ops, using: :gin
     t.index ["nutritionist_id"], name: "index_services_on_nutritionist_id"
     t.check_constraint "duration_minutes > 0", name: "positive_duration"
     t.check_constraint "price_cents > 0", name: "positive_price"

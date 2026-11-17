@@ -29,6 +29,14 @@ class ServiceTest < ActiveSupport::TestCase
     assert_equal "nutricao desportiva", service.reload.description_search
   end
 
+  test "keeps a searchable copy of the location, without accents and in lowercase" do
+    service = services(:ana_first_appointment)
+
+    service.update!(location: "Praça do Município 1, Évora")
+
+    assert_equal "praca do municipio 1, evora", service.reload.location_search
+  end
+
   test "cannot be deleted while it has appointment requests" do
     service = services(:ana_first_appointment)
 
