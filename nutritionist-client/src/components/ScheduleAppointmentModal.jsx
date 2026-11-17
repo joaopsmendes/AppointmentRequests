@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { createAppointmentRequest } from '../api/appointmentRequests'
-import { ApiError } from '../api/client'
+import { errorMessages } from '../api/client'
 import { toDateTimeLocalValue } from '../utils/dates'
 import { formatPrice } from '../utils/formatPrice'
+import ErrorList from './ErrorList'
 import Modal from './Modal'
 
 const inputClassName =
@@ -37,8 +38,7 @@ function ScheduleAppointmentModal({ nutritionist, initialService, onClose }) {
       })
       setIsSuccess(true)
     } catch (error) {
-      const apiMessages = error instanceof ApiError ? error.errors : []
-      setErrors(apiMessages.length > 0 ? apiMessages : ['Something went wrong. Please try again.'])
+      setErrors(errorMessages(error))
     } finally {
       setIsSubmitting(false)
     }
@@ -108,13 +108,7 @@ function ScheduleAppointmentModal({ nutritionist, initialService, onClose }) {
           />
         </label>
 
-        {errors.length > 0 && (
-          <ul role="alert" className="rounded bg-red-50 p-3 text-sm text-red-700">
-            {errors.map((message) => (
-              <li key={message}>{message}</li>
-            ))}
-          </ul>
-        )}
+        <ErrorList messages={errors} />
 
         <button
           type="submit"

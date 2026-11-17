@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { answerAppointmentRequest } from '../api/appointmentRequests'
-import { ApiError } from '../api/client'
+import { ApiError, errorMessages } from '../api/client'
 import { formatDate, formatTime } from '../utils/dates'
+import ErrorList from './ErrorList'
 import Modal from './Modal'
 
 function AnswerRequestModal({ appointmentRequest, onClose, onAnswered, onOutdated }) {
@@ -18,8 +19,7 @@ function AnswerRequestModal({ appointmentRequest, onClose, onAnswered, onOutdate
       const response = await answerAppointmentRequest(appointmentRequest.id, status)
       onAnswered(response)
     } catch (error) {
-      const apiMessages = error instanceof ApiError ? error.errors : []
-      setErrors(apiMessages.length > 0 ? apiMessages : ['Something went wrong. Please try again.'])
+      setErrors(errorMessages(error))
       
       if (error instanceof ApiError && error.status === 409) onOutdated()
       setSubmitting(null)
@@ -45,13 +45,7 @@ function AnswerRequestModal({ appointmentRequest, onClose, onAnswered, onOutdate
         The guest is notified by email. Accepting also rejects the other pending requests that overlap this slot.
       </p>
 
-      {errors.length > 0 && (
-        <ul role="alert" className="mt-4 rounded bg-red-50 p-3 text-sm text-red-700">
-          {errors.map((message) => (
-            <li key={message}>{message}</li>
-          ))}
-        </ul>
-      )}
+      <ErrorList messages={errors} className="mt-4" />
 
       <div className="mt-6 flex gap-3">
         <button
