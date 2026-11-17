@@ -6,7 +6,6 @@ export class ApiError extends Error {
   }
 }
 
-// Makes an API request.
 export async function request(path, options = {}) {
   const response = await fetch(path, {
     ...options,

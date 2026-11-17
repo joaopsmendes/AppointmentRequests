@@ -51,16 +51,13 @@ module AppointmentRequests
       )
 
       if !appointment_request.valid?
-        # If it failed specifically because the guest already has a pending request -> HTTP 409 (Conflict)
         if appointment_request.errors.of_kind?(:guest, :pending_request_exists)
           return failure(:conflict, [PENDING_REQUEST_MESSAGE])
         end
 
-        # If it failed for any other reason (e.g., date in the past) -> HTTP 422 (Invalid)
         return failure(:invalid, appointment_request.errors.full_messages)
       end
 
-      # Check if the nutritionist already has an accepted appointment overlapping this one.
       if appointment_request.slot_taken?
         return failure(:conflict, [SLOT_TAKEN_MESSAGE])
       end
