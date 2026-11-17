@@ -176,7 +176,8 @@ Each case is covered by a test with real threads and committed transactions (`co
 - **Confirmation before accepting**, listing the requests that will be rejected automatically. Today the modal warns about it and a message reports how many were rejected.
 - **Busy slots in the booking modal:** show the nutritionist's accepted appointments for the chosen day. Today a taken slot is refused when the request is submitted (409).
 - **Location filter** (the mockup's "Location" field) and **caching** of the search.
-- **Personal Page** button (shown as "Website", like the mockup): currently a non-functional placeholder, as the challenge allows.
-- **Scheduled job** to reject pending requests as soon as their date passes, with an email to the guest.
-- **Persistent job queue / outbox for emails:** `deliver_later` uses the in-memory adapter, so an email can be lost if the process dies right after the commit.
-- **Authentication, nutritionists' working hours, i18n**, and frontend tests.
+- **Audit trail:** the history shows each request's final status and answer date, but not who decided. A `decisions` table with one record per answer would keep the full trail.
+- **Reliable background jobs:** a persistent queue (or outbox) for emails, which today can be lost if the process dies right after the commit, and a scheduled job to reject pending requests as soon as their date passes.
+- **Authentication and nutritionists' working hours**, with time zones per location.
+- **Production readiness:** error tracking (e.g. Sentry) and structured logs, on top of the logs already written for the decisions taken silently.
+- **i18n** and **frontend tests**.
