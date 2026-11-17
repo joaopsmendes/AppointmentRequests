@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { formatPrice } from '../utils/formatPrice'
+import { findInitialService } from '../utils/searchText'
 import Avatar from './Avatar'
 import { BriefcaseIcon, MapPinIcon, MoneyIcon } from './icons'
 
-function NutritionistCard({ nutritionist, onSchedule }) {
+function NutritionistCard({ nutritionist, query = '', location = '', onSchedule }) {
   const { services } = nutritionist
-  const [selectedServiceId, setSelectedServiceId] = useState(services[0]?.id)
+  const [selectedServiceId, setSelectedServiceId] = useState(() => findInitialService(services, { query, location })?.id)
   const selectedService = services.find((service) => service.id === selectedServiceId)
 
   return (

@@ -2,9 +2,9 @@ module Nutritionists
   class Search
     Result = Struct.new(:records, :page, :per_page, :total_count, :total_pages, keyword_init: true)
 
-    def self.call(query: nil, page: 1, per_page: nil)
+    def self.call(query: nil, location: nil, page: 1, per_page: nil)
       per_page = nil unless per_page.to_i.positive?
-      scope = build_scope(query)
+      scope = build_scope(query, location)
       paginated_scope = scope.page(page).per(per_page, max_per_page: 25)
 
       Result.new(
@@ -27,14 +27,19 @@ module Nutritionists
            THEN 0 ELSE 1 END
     SQL
 
-    def self.build_scope(query)
+    def self.build_scope(query, location)
       scope = Nutritionist.preload(:services)
+      services = Service.all
+      if location.present?
+        services = services.where("location ILIKE ?", "%#{Service.sanitize_sql_like(location.strip)}%")
+        scope = scope.where(id: services.select(:nutritionist_id))
+      end
       return scope.order(:name, :id) if query.blank?
 
       query = SearchText.normalize(query)
       values = { term: "%#{Nutritionist.sanitize_sql_like(query)}%", query: query }
 
-      matching_services = Service.where(DESCRIPTION_MATCHES, values).select(:nutritionist_id)
+      matching_services = services.where(DESCRIPTION_MATCHES, values).select(:nutritionist_id)
 
       scope.where(NAME_MATCHES, values)
            .or(scope.where(id: matching_services))

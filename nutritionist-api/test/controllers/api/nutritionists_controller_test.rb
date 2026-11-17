@@ -29,6 +29,13 @@ module Api
       assert_equal ["João Silva"], response.parsed_body["data"].map { |n| n["name"] }
     end
 
+    test "GET /api/nutritionists filters by location, combined with q" do
+      get "/api/nutritionists", params: { q: "follow-up", location: "leiria" }
+
+      assert_response :ok
+      assert_equal ["Rita Costa"], response.parsed_body["data"].map { |n| n["name"] }
+    end
+
     test "GET /api/nutritionists paginates with page and per_page" do
       get "/api/nutritionists", params: { page: 2, per_page: 1 }
 
