@@ -150,18 +150,18 @@ Errors are returned as `{ "errors": ["..."] }`. Lists are paginated with `{ data
 - **Emails are sent after the transaction commits** (`NotificationService` → `deliver_later`): a rollback cannot undo an email, so a failed accept never notifies anyone. Times are shown in Lisbon time; data is stored in UTC.
 
 ### Concurrency
-The frontend disables buttons while a request is in flight, but the backend cannot rely on that: a double click, two open tabs or a direct API call can always race. These are the cases found, and how each one is handled:
+The frontend disables buttons while a request is in flight, but the backend cannot rely on that: a double click, two open tabs or a direct API call can always race. These are the race conditions between the two write flows, **Create** (a guest requests an appointment) and **Update** (a nutritionist answers one), and how each is handled:
 
-| # | Race | What could go wrong | How it is prevented |
+| Flows | Race condition | What could go wrong | How it is prevented |
 |---|---|---|---|
-| 1 | The same guest sends two requests at once | Both pass the validation, and the guest ends up with two pending requests | The partial unique index rejects the second insert → 409 |
-| 2 | Two overlapping requests are accepted at once | Double booking | The exclusion constraint rejects the second accept → 409 |
-| 3 | The same request is answered twice (double click, two tabs) | Answered twice, two emails | A conditional `UPDATE ... WHERE status = 'pending'`: the second one updates 0 rows → 409 |
-| 4 | A request is created while an overlapping one is being accepted | Each side checks before the other commits: the new request passes the "slot taken" check, and the accept does not see it to reject it. It stays pending in a taken slot, and its guest is blocked. | A **pessimistic lock on the nutritionist row** (`SELECT ... FOR UPDATE`) at the start of both Create and Answer. The second one waits and then sees what the first one committed. |
+| **Create vs Create** | The same guest sends two requests at once | Both pass the validation, and the guest ends up with two pending requests | Partial unique index on pending requests: the second insert fails → 409 |
+| **Update vs Update** | Two overlapping requests of the same nutritionist are accepted at once | Double booking | Exclusion constraint on accepted intervals: the second accept fails → 409 |
+| **Update vs Update** | The same request is answered twice (double click, two tabs) | Answered twice, two emails | Conditional `UPDATE ... WHERE status = 'pending'`: the second one updates 0 rows → 409 |
+| **Create vs Update** | A request is created while an overlapping one is being accepted | Each side checks before the other commits: the new request passes the "slot taken" check, and the accept does not see it to reject it. It stays pending in a taken slot, and its guest is blocked. | Pessimistic lock on the nutritionist row (`SELECT ... FOR UPDATE`) at the start of both flows: the second one waits and then sees what the first one committed |
 
-Cases 1–3 are about rows the database can check when they are written, so a constraint is enough. Case 4 depends on a row that does not exist yet (the new request), which no constraint can see. That is the only place that needed a lock. The lock only queues requests for the **same** nutritionist, and both use cases lock in the same order (nutritionist, then requests), so they cannot deadlock each other; a retry on deadlock stays as a safety net.
+The first three are about rows the database can check when they are written, so a constraint is enough. **Create vs Update** depends on a row that does not exist yet (the new request), which no constraint can see. That is the only place that needed a lock. The lock only queues requests for the same nutritionist, and both flows lock in the same order (nutritionist, then requests), so they cannot deadlock each other; a retry on deadlock stays as a safety net.
 
-Each case is covered by a test with real threads and committed transactions (concurrency_test.rb).
+Each case is covered by a test with real threads and committed transactions (`concurrency_test.rb`).
 
 ### Search
 - Matches the nutritionist's name or a service description, ignoring case and accents ("joao" finds "João"). Nutritionists and services keep a normalized copy of that text (`name_search`, `description_search`), maintained by the models, and the query is normalized the same way.
