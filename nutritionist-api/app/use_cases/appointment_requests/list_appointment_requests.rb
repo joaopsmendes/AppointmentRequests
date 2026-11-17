@@ -12,19 +12,15 @@ module AppointmentRequests
 
       per_page = nil unless per_page.to_i.positive?
 
-      status = status.presence || "pending"
-      unless AppointmentRequest.statuses.key?(status)
+      statuses = status.to_s.split(",").map(&:strip).reject(&:empty?)
+      statuses = ["pending"] if statuses.empty?
+      unless statuses.all? { |value| AppointmentRequest.statuses.key?(value) }
         return failure(:invalid, ["Status must be one of: #{AppointmentRequest.statuses.keys.join(', ')}"])
       end
 
-      scope = nutritionist.appointment_requests.where(status: status)
-      # A pending request whose date has passed can no longer be accepted, so it is not shown.
-      scope = scope.upcoming if status == "pending"
-
-      paginated_scope = scope.includes(:guest, :service)
-                                    .order(:scheduled_at, :id)
-                                    .page(page)
-                                    .per(per_page, max_per_page: 25)
+      paginated_scope = scope_for(nutritionist, statuses).includes(:guest, :service)
+                                                         .page(page)
+                                                         .per(per_page, max_per_page: 25)
 
       Result.new(
         status: :ok,
@@ -37,10 +33,20 @@ module AppointmentRequests
       )
     end
 
+    def self.scope_for(nutritionist, statuses)
+      requests = nutritionist.appointment_requests.where(status: statuses)
+
+      if statuses.include?("pending")
+        requests.where("status <> 'pending' OR scheduled_at > ?", Time.current).order(:scheduled_at, :id)
+      else
+        requests.order(answered_at: :desc, id: :desc)
+      end
+    end
+
     def self.failure(status, errors)
       Result.new(status: status, records: [], errors: errors)
     end
 
-    private_class_method :failure
+    private_class_method :scope_for, :failure
   end
 end
