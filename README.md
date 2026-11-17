@@ -4,7 +4,7 @@ A web application where guests search for nutritionists and request appointments
 
 Built as a full-stack technical challenge with **Ruby on Rails** (API) and **React**.
 
-> The interface follows the challenge's reference mockup. This project is not affiliated with or endorsed by Nutrium.
+> The interface follows the reference mockup provided with the challenge, including the Nutrium logo.
 
 ## Contents
 - [Stack](#stack)
@@ -107,7 +107,8 @@ The seeds create 10 nutritionists with services at different prices and location
 3. **Answer requests:** open `/professionals`, choose Ana Lima, and accept **Carla Nunes** (10:00–11:00):
    - **Diogo Pires** (10:30, overlapping) is rejected automatically;
    - **Eva Moreira** (11:00, right after) stays pending: back-to-back appointments do not overlap;
-   - Carla and Diogo receive an email (see `tmp/mails/`).
+   - Carla and Diogo receive an email (see `tmp/mails/`);
+   - the clock icon opens the history: every answered request, the most recent answer first.
 4. **Taken slot:** request an appointment with Ana Lima at the time of **Gonçalo Teixeira**'s accepted appointment. The API answers 409 "This time slot is no longer available".
 5. **One pending request per guest:** request a second appointment with the email of a guest who already has a pending request, e.g. `filipe.ramos@example.com`. The API answers 409.
 
@@ -117,7 +118,7 @@ The seeds create 10 nutritionists with services at different prices and location
 |---|---|---|
 | GET | `/api/nutritionists?q=&page=&per_page=` | Search nutritionists by name or service description |
 | POST | `/api/appointment_requests` | Create a request: `{ appointment_request: { name, email, service_id, scheduled_at } }` |
-| GET | `/api/nutritionists/:id/appointment_requests?status=&page=&per_page=` | A nutritionist's requests by status (`pending` by default, or `accepted` / `rejected`) |
+| GET | `/api/nutritionists/:id/appointment_requests?status=&page=&per_page=` | A nutritionist's requests by one or more statuses, separated by commas (`pending` by default; `accepted,rejected` for the history). Pending requests are ordered by appointment date, answered ones by the most recent answer |
 | PATCH | `/api/appointment_requests/:id` | Answer a request: `{ status: "accepted" \| "rejected" }`. Returns the request and the ids rejected automatically |
 
 | Status | Meaning |
@@ -126,7 +127,7 @@ The seeds create 10 nutritionists with services at different prices and location
 | 400 | The body is missing its root key (`appointment_request` or `status`) |
 | 404 | Nutritionist, service or request not found |
 | 409 | Conflicts with the current state: the guest already has a pending request, the slot is taken, the request was already answered |
-| 422 | Invalid data: a date in the past, an invalid email, an unknown status |
+| 422 | Invalid data: a date in the past, an invalid email (it must look like `name@domain.tld`), an unknown status |
 
 Errors are returned as `{ "errors": ["..."] }`. Lists are paginated with `{ data: [...], meta: { page, per_page, total_count, total_pages } }` (`per_page` is capped at 25).
 
@@ -169,7 +170,7 @@ Each case is covered by a test with real threads and committed transactions (con
 
 ### Code
 - **Backend:** use cases (`app/use_cases`) hold the business logic and return a `Result` with a symbolic status (`:ok`, `:created`, `:invalid`, `:conflict`, `:not_found`); controllers only map it to HTTP. Logs are added only for decisions taken silently (requests rejected automatically, refused overlaps, deadlock retries), with ids only.
-- **Frontend:** there is no authentication (not required): the nutritionist picks their profile on `/professionals`. After an answer, the list is reloaded from the API, because accepting can reject other requests. The mockup's history icon became Pending / Accepted / Rejected tabs, and the "Website" button is a placeholder, as the challenge allows.
+- **Frontend:** there is no authentication (not required): the nutritionist picks their profile on `/professionals`. After an answer, the list is reloaded from the API, because accepting can reject other requests. The mockup's clock icon opens the history (every answered request, for auditing), and Pending / Accepted / Rejected tabs were added as well. The "Website" button is a placeholder, as the challenge allows.
 
 ## Known limitations and future work
 - **Confirmation before accepting**, listing the requests that will be rejected automatically. Today the modal warns about it and a message reports how many were rejected.
