@@ -104,13 +104,15 @@ The seeds create 10 nutritionists with services at different prices and location
 
 1. **Search** on `/` for `sports`, `follow-up`, `joao` (no accent) or `ana lma` (typo).
 2. **Request an appointment:** click "Schedule appointment" on any card, then fill in the name, email, date and time.
-3. **Answer requests:** open `/professionals`, choose Ana Lima, and accept **Carla Nunes** (10:00–11:00):
+3. **Answer requests:** click the header link "Are you a nutrition professional? See your requests →" (it opens `/professionals`), choose Ana Lima, and accept **Carla Nunes** (10:00–11:00):
    - **Diogo Pires** (10:30, overlapping) is rejected automatically;
    - **Eva Moreira** (11:00, right after) stays pending: back-to-back appointments do not overlap;
    - Carla and Diogo receive an email (see `tmp/mails/`);
    - the clock icon opens the history: every answered request, the most recent answer first.
 4. **Taken slot:** request an appointment with Ana Lima at the time of **Gonçalo Teixeira**'s accepted appointment. The API answers 409 "This time slot is no longer available".
 5. **One pending request per guest:** request a second appointment with the email of a guest who already has a pending request, e.g. `filipe.ramos@example.com`. The API answers 409.
+
+> **Note:** the challenge has no authentication and no way to reach a nutritionist's page from the search. The header link and the `/professionals` page were added so you can move between the guest and nutritionist pages without typing URLs. In a real product, the nutritionist would log in and land on their own requests.
 
 ## API
 
