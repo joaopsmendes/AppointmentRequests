@@ -25,3 +25,8 @@ export async function request(path, options = {}) {
 
   return body
 }
+
+export function errorMessages(error) {
+  if (error instanceof ApiError && error.errors.length > 0) return error.errors
+  return ['Something went wrong. Please try again.']
+}
