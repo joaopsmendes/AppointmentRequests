@@ -55,7 +55,6 @@ module AppointmentRequests
             raise ActiveRecord::Rollback
           end
 
-          # reject the pending requests that lost this time slot.
           auto_rejected_ids = reject_conflicting_requests(appointment_request) if appointment_request.accepted?
         end
 
@@ -87,7 +86,6 @@ module AppointmentRequests
       end
     end
 
-    # Concurrency Guarantee
     # Rejects pending requests left without a slot:
     # - the same guest at the same date and time (challenge rule);
     # - any request of the same nutritionist overlapping the accepted interval.

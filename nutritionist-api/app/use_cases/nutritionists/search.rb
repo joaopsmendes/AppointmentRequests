@@ -1,4 +1,3 @@
-# app/use_cases/nutritionists/search.rb
 module Nutritionists
   class Search
     Result = Struct.new(:records, :page, :per_page, :total_count, :total_pages, keyword_init: true)
