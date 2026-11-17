@@ -169,7 +169,7 @@ Each case is covered by a test with real threads and committed transactions (`co
 - Matches the nutritionist's name or a service description, ignoring case and accents ("joao" finds "João"). Nutritionists and services keep a normalized copy of that text (`name_search`, `description_search`), maintained by the models, and the query is normalized the same way.
 - Tolerates typos ("ana lma" finds "Ana Lima") with pg_trgm's word similarity. Exact matches come first.
 - Both use trigram GIN indexes. An external search engine would be one more service to run and keep in sync.
-- The optional **location** filter matches part of a service's location, ignoring case (`porto`, `online`). With a search term, the service description and the location must match the **same** service, so `follow-up` in `lisboa` does not return a nutritionist whose follow-up is online. It does not ignore accents or tolerate typos like the main search.
+- The optional **location** filter matches part of a service's location, ignoring case (`porto`, `online`). With a search term, the service description and the location must match the **same** service, so `follow-up` in `lisboa` does not return a nutritionist whose follow-up is online. Like the main search, it ignores accents (`Pórto` finds "Porto") through a normalized copy (`location_search`), but it does not tolerate typos.
 - Each card opens on the service that matched the search and the location (e.g. `sports` opens on "Sports nutrition"). The frontend repeats the accent-free text comparison for this, but not the typo tolerance: a typo match opens on the first service.
 
 ### Code
@@ -179,7 +179,7 @@ Each case is covered by a test with real threads and committed transactions (`co
 ## Known limitations and future work
 - **Confirmation before accepting**, listing the requests that will be rejected automatically. Today the modal warns about it and a message reports how many were rejected.
 - **Busy slots in the booking modal:** show the nutritionist's accepted appointments for the chosen day. Today a taken slot is refused when the request is submitted (409).
-- **Caching** of the search, and accent and typo tolerance in the location filter.
+- **Caching** of the search, and typo tolerance in the location filter.
 - **Audit trail:** the history shows each request's final status and answer date, but not who decided. A `decisions` table with one record per answer would keep the full trail.
 - **Reliable background jobs:** a persistent queue (or outbox) for emails, which today can be lost if the process dies right after the commit, and a scheduled job to reject pending requests as soon as their date passes.
 - **Authentication and nutritionists' working hours**, with time zones per location.

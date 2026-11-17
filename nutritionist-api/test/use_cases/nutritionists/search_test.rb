@@ -39,6 +39,13 @@ module Nutritionists
       assert_equal ["João Silva"], names(result)
     end
 
+    test "filters by location ignoring accents, in the search and in the data" do
+      assert_equal ["João Silva"], names(Search.call(location: "Pórto"))
+
+      services(:rita_follow_up).update!(location: "Rua Direita 5, Évora")
+      assert_equal ["Rita Costa"], names(Search.call(location: "evora"))
+    end
+
     test "keeps every service of a nutritionist matched by the location of one of them" do
       ana = Search.call(location: "online").records.first
 

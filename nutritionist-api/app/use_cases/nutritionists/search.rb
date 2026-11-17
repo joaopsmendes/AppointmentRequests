@@ -31,7 +31,8 @@ module Nutritionists
       scope = Nutritionist.preload(:services)
       services = Service.all
       if location.present?
-        services = services.where("location ILIKE ?", "%#{Service.sanitize_sql_like(location.strip)}%")
+        location_term = "%#{Service.sanitize_sql_like(SearchText.normalize(location))}%"
+        services = services.where("location_search ILIKE ?", location_term)
         scope = scope.where(id: services.select(:nutritionist_id))
       end
       return scope.order(:name, :id) if query.blank?
