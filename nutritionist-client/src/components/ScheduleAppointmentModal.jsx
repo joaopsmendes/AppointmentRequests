@@ -83,7 +83,16 @@ function ScheduleAppointmentModal({ nutritionist, initialService, onClose }) {
 
         <label className="flex flex-col gap-1 text-sm">
           Email
-          <input type="email" name="email" value={form.email} onChange={handleChange} required className={inputClassName} />
+          <input
+            type="email"
+            name="email"
+            value={form.email}
+            onChange={handleChange}
+            required
+            pattern="[^\s@]+@[^\s@]+\.[^\s@]+"
+            title="Enter an email like name@example.com"
+            className={inputClassName}
+          />
         </label>
 
         <label className="flex flex-col gap-1 text-sm">
